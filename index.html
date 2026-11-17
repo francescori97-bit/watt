@@ -944,6 +944,66 @@ details summary { cursor: pointer; }
       '</Activity></Activities></TrainingCenterDatabase>\n';
   };
 
+
+  /* ---------- Peso ---------- */
+  /* Lettore tollerante per l'export CSV di Renpho Health (formato non documentato): separatore , ; o tab,
+     decimali con punto o virgola, kg o lb, data e ora in una o due colonne. Una pesata per giorno: l'ultima. */
+  W.parseWeightCsv = function (text) {
+    const lines = String(text || '').replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return { rows: [], skipped: 0, error: 'File vuoto o senza intestazione.' };
+    const cnt = ch => (lines[0].match(new RegExp(ch === '\t' ? '\t' : '\\' + ch, 'g')) || []).length;
+    const sep = ['\t', ';', ','].sort((a, b) => cnt(b) - cnt(a))[0];
+    const split = l => { const out = []; let cur = '', q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out.map(x => x.trim()); };
+    const head = split(lines[0]).map(h => h.toLowerCase());
+    let wi = head.findIndex(h => /^(peso|weight)\b/.test(h) && !/(lean|magra|muscle|muscol|fat|grass|bone|oss|water|acqua|free)/.test(h));
+    if (wi < 0) wi = head.findIndex(h => /(peso|weight)/.test(h) && !/(lean|magra|muscle|muscol|fat|grass|bone|oss|water|acqua|free)/.test(h));
+    let di = head.findIndex(h => /(date|data|giorno|day)/.test(h));
+    if (di < 0) di = head.findIndex(h => /(time|measur|misura|ora)/.test(h));
+    const ti = head.findIndex((h, i) => i !== di && /(time|ora|orario)/.test(h));
+    if (wi < 0 || di < 0) return { rows: [], skipped: 0, error: 'Nel file non trovo le colonne della data e del peso.' };
+    const lbHead = /\blbs?\b|libbr/.test(head[wi]);
+    const p2 = n => (n < 10 ? '0' : '') + n;
+    const parseDate = s0 => {
+      const s = String(s0).trim();
+      let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(s);
+      if (m) return m[1] + '-' + p2(+m[2]) + '-' + p2(+m[3]);
+      m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/.exec(s);
+      if (m) {
+        let a = +m[1], b = +m[2], y = +m[3]; if (y < 100) y += 2000;
+        let d = a, mo = b;              /* formato italiano giorno/mese, salvo che il primo numero non possa essere un giorno */
+        if (b > 12 && a <= 12) { d = b; mo = a; }
+        if (mo > 12 || d > 31) return null;
+        return y + '-' + p2(mo) + '-' + p2(d);
+      }
+      const t = Date.parse(s);
+      if (!isNaN(t)) { const x = new Date(t); return x.getFullYear() + '-' + p2(x.getMonth() + 1) + '-' + p2(x.getDate()); }
+      return null;
+    };
+    const timeOf = s => { const m = /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i.exec(String(s || '')); if (!m) return 0; let h = +m[1]; if (m[4]) { if (/pm/i.test(m[4]) && h < 12) h += 12; if (/am/i.test(m[4]) && h === 12) h = 0; } return h * 3600 + (+m[2]) * 60 + (+(m[3] || 0)); };
+    const byDay = {}; let skipped = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const c = split(lines[i]);
+      const raw = c[wi] || '';
+      const num = parseFloat(raw.replace(/[^\d,.\-]/g, '').replace(',', '.'));
+      const day = parseDate(c[di] || '');
+      if (!day || !isFinite(num)) { skipped++; continue; }
+      const kg = (lbHead || /lb/i.test(raw)) ? num * 0.45359237 : num;
+      if (kg < 30 || kg > 250) { skipped++; continue; }
+      const t = timeOf(ti >= 0 ? c[ti] : c[di]);
+      if (!byDay[day] || t >= byDay[day].t) byDay[day] = { t: t, kg: Math.round(kg * 10) / 10 };
+    }
+    const rows = Object.keys(byDay).sort().map(d => ({ date: d, kg: byDay[d].kg }));
+    return { rows: rows, skipped: skipped, error: rows.length ? null : 'Nessuna pesata valida nel file.' };
+  };
+  /* peso in vigore a una data: ultima pesata fino a quel giorno, altrimenti la prima disponibile (segnalata) */
+  W.weightAt = function (list, day) {
+    let best = null, first = null;
+    for (const w of list || []) { if (!first || w.date < first.date) first = w; if (w.date <= day && (!best || w.date >= best.date)) best = w; }
+    if (best) return { kg: best.kg, date: best.date, exact: true };
+    return first ? { kg: first.kg, date: first.date, exact: false } : null;
+  };
+  W.wkg = (watts, kg) => (watts != null && kg ? watts / kg : null);
+
   W.fmtTime = function (sec) {
     sec = Math.max(0, Math.round(sec));
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -980,7 +1040,7 @@ details summary { cursor: pointer; }
 
   /* ---------- Stato ---------- */
   const SA = !!window.WATT_STANDALONE;
-  const DEF = { ftp: null, ftpHist: [], hrz: null, hrSrc: null, restHr: 50, lthr: null, mode: 'cyclette', voice: false, erg: true, months: 6, sessions: [], plan: [], updatedAt: 0 };
+  const DEF = { ftp: null, ftpHist: [], hrz: null, hrSrc: null, restHr: 50, lthr: null, weights: [], mode: 'cyclette', voice: false, erg: true, months: 6, sessions: [], plan: [], updatedAt: 0 };
   let P = Object.assign({}, DEF, (SA && !LS.get('watt.state') && window.WATT_SEED) ? window.WATT_SEED : {}, LS.get('watt.state') || {});
   let acts = LS.get('watt.acts') || {};
   let ans = LS.get('watt.an') || {};
@@ -1024,6 +1084,13 @@ details summary { cursor: pointer; }
     if (!live) render();
   }
 
+  /* peso alla data: pesate inserite o importate da Renpho; in mancanza, il peso del profilo Strava */
+  function kgAt(day) {
+    const w = W.weightAt(P.weights, day || today());
+    if (w) return Object.assign({ src: 'pesata' }, w);
+    return strava.weight ? { kg: strava.weight, date: null, exact: false, src: 'strava' } : null;
+  }
+  const wkgTxt = (watts, day) => { const k = kgAt(day); return k && watts != null ? nf(watts / k.kg, 2) : '—'; };
   const lthrOf = () => P.lthr || (P.hrz ? P.hrz[2] + 1 : null);
   function setFtp(v, src, date) {
     v = Math.round(v);
@@ -1256,7 +1323,7 @@ details summary { cursor: pointer; }
     s += '<path d="' + line + ' L' + x(pts[pts.length - 1].d).toFixed(1) + ' ' + y(0) + ' L' + x(pts[0].d).toFixed(1) + ' ' + y(0) + ' Z" fill="rgba(255,106,26,.14)"/><path d="' + line + '" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>';
     for (const d of W.DURS) s += '<text x="' + x(d) + '" y="' + (h - 6) + '" text-anchor="middle">' + DLAB[d].replace(' min', 'm').replace(' s', 's') + '</text>';
     for (const p of pts) {
-      const tip = DLAB[p.d] + ': ' + p.v + ' W' + (strava.weight ? ' (' + nf(p.v / strava.weight, 2) + ' W/kg)' : '') + (p.a ? ' · ' + dmy(p.a.start) + ' · ' + p.a.name : '');
+      const tip = DLAB[p.d] + ': ' + p.v + ' W' + (kgAt(p.a ? p.a.start.slice(0, 10) : today()) ? ' (' + wkgTxt(p.v, p.a ? p.a.start.slice(0, 10) : today()) + ' W/kg)' : '') + (p.a ? ' · ' + dmy(p.a.start) + ' · ' + p.a.name : '');
       s += '<g data-tip="' + esc(tip) + '"><circle cx="' + x(p.d) + '" cy="' + y(p.v) + '" r="14" fill="transparent"/><circle cx="' + x(p.d) + '" cy="' + y(p.v) + '" r="4" fill="var(--bg)" stroke="var(--acc)" stroke-width="2.5"/><text class="v" x="' + x(p.d) + '" y="' + (y(p.v) - 9) + '" text-anchor="middle">' + p.v + '</text></g>';
     }
     return s + '</svg>';
@@ -1366,6 +1433,41 @@ details summary { cursor: pointer; }
     return h;
   }
 
+  function curveTable(curve) {
+    const ds = W.DURS.filter(d => curve[d] != null);
+    if (!ds.length) return '';
+    const v = d => (typeof curve[d] === 'object' ? curve[d] : { w: curve[d], a: null });
+    return '<div class="tw"><table><thead><tr><th></th>' + ds.map(d => '<th class="r">' + DLAB[d] + '</th>').join('') + '</tr></thead><tbody><tr><td>W</td>' + ds.map(d => '<td class="r">' + v(d).w + '</td>').join('') + '</tr><tr><td>W/kg</td>' + ds.map(d => '<td class="r"><b>' + wkgTxt(v(d).w, v(d).a ? v(d).a.start.slice(0, 10) : today()) + '</b></td>').join('') + '</tr></tbody></table></div>';
+  }
+  function svgWeight(pts, w) {
+    const h = 170, m = { t: 18, r: 12, b: 22, l: 40 };
+    const vs = pts.map(p => p.kg), lo = Math.floor(Math.min.apply(null, vs) - 0.5), hi = Math.ceil(Math.max.apply(null, vs) + 0.5);
+    const t0 = Date.parse(pts[0].date), t1 = Math.max(Date.parse(pts[pts.length - 1].date), t0 + 864e5);
+    const X = d => m.l + ((Date.parse(d) - t0) / (t1 - t0)) * (w - m.l - m.r), Y = v => m.t + ((hi - v) / (hi - lo)) * (h - m.t - m.b);
+    let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Andamento del peso nel periodo">';
+    for (const g of [lo, (lo + hi) / 2, hi]) s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + Y(g) + '" y2="' + Y(g) + '" stroke="#3a3f4b"/><text x="' + (m.l - 5) + '" y="' + (Y(g) + 4) + '" text-anchor="end">' + nf(g, g % 1 ? 1 : 0) + '</text>';
+    s += '<path d="' + pts.map((p, i) => (i ? 'L' : 'M') + X(p.date).toFixed(1) + ' ' + Y(p.kg).toFixed(1)).join(' ') + '" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>';
+    for (const p of pts) s += '<g data-tip="' + esc(dmy(p.date) + ': ' + nf(p.kg, 1) + ' kg' + (P.ftp ? ' · FTP ' + nf(W.ftpAt(P.ftpHist, p.date, P.ftp).ftp / p.kg, 2) + ' W/kg' : '')) + '"><circle cx="' + X(p.date) + '" cy="' + Y(p.kg) + '" r="10" fill="transparent"/><circle cx="' + X(p.date) + '" cy="' + Y(p.kg) + '" r="3" fill="var(--acc)"/></g>';
+    const L = pts[pts.length - 1];
+    s += '<text x="' + m.l + '" y="' + (h - 6) + '">' + dmy(pts[0].date) + '</text><text x="' + (w - m.r) + '" y="' + (h - 6) + '" text-anchor="end">' + dmy(L.date) + '</text>';
+    return s + '</svg>';
+  }
+  function vWeight() {
+    const k = kgAt(today());
+    const from = localDay(new Date(Date.now() - UI.period * 864e5));
+    const pts = (P.weights || []).filter(p => p.date >= from);
+    const first = pts[0], last = pts[pts.length - 1];
+    let h = '<div class="card"><div class="row spread"><h3>Peso e W/kg</h3><a href="#impostazioni" class="small">Aggiorna peso</a></div>';
+    h += '<div class="tiles">' +
+      tile('Peso', k ? nf(k.kg, 1) : '—', k ? 'kg' : '', k ? (k.src === 'strava' ? 'dal profilo Strava' : 'pesata del ' + dmy(k.date)) : 'inseriscilo in Impostazioni') +
+      tile('FTP', P.ftp && k ? nf(P.ftp / k.kg, 2) : '—', P.ftp && k ? 'W/kg' : '', P.ftp ? P.ftp + ' W' : 'FTP non impostata') +
+      tile('Variazione', pts.length >= 2 ? (last.kg - first.kg > 0 ? '+' : last.kg - first.kg < 0 ? '−' : '') + nf(Math.abs(last.kg - first.kg), 1) : '—', pts.length >= 2 ? 'kg' : '', pts.length >= 2 ? 'dal ' + dmy(first.date) : 'servono almeno due pesate nel periodo') +
+      '</div>';
+    h += pts.length >= 2 ? chart(w => svgWeight(pts, w)) : '<p class="small mut">Il grafico compare con almeno due pesate nel periodo scelto.</p>';
+    h += '<p class="small mut">I W/kg di ogni attività usano il peso del giorno: l’ultima pesata fino a quella data.</p></div>';
+    return h;
+  }
+
   /* ---------- Vista: Dashboard ---------- */
   function estFtp() {
     const lim = Date.now() - 90 * 864e5; let best = null;
@@ -1408,9 +1510,10 @@ details summary { cursor: pointer; }
       tile('TSS', cur.tssN ? nf(cur.tss) : '—', '', cur.tssN ? cur.tssN + ' sessioni con almeno 20 min di potenza' + (cur.approx ? ' · FTP attuale applicata a date senza FTP registrata' : '') : 'servono serie di potenza e una FTP') +
       '</div>';
     h += vLoad();
+    h += vWeight();
     h += '<div class="card"><h3>Volume per settimana (lun–dom)</h3>' + chart(w => svgWeeks(weeksData(days), w)) + '<div class="legend"><span><i style="background:var(--c-virt)"></i>Zwift / virtuale</span><span><i style="background:var(--c-indoor)"></i>Indoor</span><span><i style="background:var(--c-outdoor)"></i>Bici outdoor</span><span><i style="background:var(--c-other)"></i>Altri sport</span></div></div>';
-    h += '<div class="grid2"><div class="card"><h3>Curva di potenza</h3>' + chart(w => svgCurve(cur.curve, w, P.ftp)) + '<p class="small mut">Migliore media per durata, calcolata dalle serie secondo per secondo di ogni attività. Una finestra vale solo se almeno il 95% dei suoi secondi ha un campione: pause e buchi di segnale non vengono riempiti.</p></div>';
-    h += '<div class="card"><h3>FTP</h3><div class="kv"><div><span>Inserita</span><b>' + (P.ftp ? P.ftp + ' W' : '—') + '</b></div><div><span>Strava' + (strava.ftpEst ? ' (stimata)' : '') + '</span><b>' + (strava.ftp ? strava.ftp + ' W' : '—') + '</b></div><div><span>Stimata</span><b>' + (est ? '≈ ' + est.ftp + ' W' : '—') + '</b></div>' + (P.ftp && strava.weight ? '<div><span>W/kg</span><b>' + nf(P.ftp / strava.weight, 2) + '</b></div>' : '') + '</div>' +
+    h += '<div class="grid2"><div class="card"><h3>Curva di potenza</h3>' + chart(w => svgCurve(cur.curve, w, P.ftp)) + curveTable(cur.curve) + '<p class="small mut">Migliore media per durata, calcolata dalle serie secondo per secondo di ogni attività. Una finestra vale solo se almeno il 95% dei suoi secondi ha un campione: pause e buchi di segnale non vengono riempiti.</p></div>';
+    h += '<div class="card"><h3>FTP</h3><div class="kv"><div><span>Inserita</span><b>' + (P.ftp ? P.ftp + ' W' : '—') + '</b></div><div><span>Strava' + (strava.ftpEst ? ' (stimata)' : '') + '</span><b>' + (strava.ftp ? strava.ftp + ' W' : '—') + '</b></div><div><span>Stimata</span><b>' + (est ? '≈ ' + est.ftp + ' W' : '—') + '</b></div>' + (P.ftp && kgAt(today()) ? '<div><span>W/kg</span><b>' + wkgTxt(P.ftp, today()) + '</b></div>' : '') + '</div>' +
       '<p class="small mut">' + (est ? 'Stima = 95% dei migliori 20 min degli ultimi 90 giorni (' + est.w + ' W il ' + dmy(est.a.start) + '). Vale come FTP solo se quei 20 minuti erano uno sforzo massimale e costante; in caso contrario sottostima. Non è una misura.' : 'Per una stima serve almeno un tratto di 20 minuti con potenza negli ultimi 90 giorni.') + '</p>' +
       ((P.ftpHist || []).length >= 2 ? chart(w => svgFtp(P.ftpHist, w)) : '<p class="small mut">Storico FTP registrato: ' + ((P.ftpHist || []).length ? P.ftpHist.map(x => x.ftp + ' W dal ' + dmy(x.date) + ' (' + srcName(x.src) + ')').join(', ') + '. Il grafico compare dalla seconda voce.' : 'nessuna voce.') + '</p>') + '</div></div>';
     h += '<div class="grid2"><div class="card"><h3>Tempo nelle zone di potenza</h3>' + zoneRows(cur.pz, W.PZ.map(z => z.name), [1, 2, 3, 4, 5, 6, 7]) + '<p class="small mut">Zone in percentuale della FTP in vigore alla data dell’attività' + (cur.approx ? '; dove non c’era una FTP registrata è stata usata quella attuale' : '') + '.</p></div><div class="card"><h3>Tempo nelle zone cardiache</h3>' + (P.hrz ? zoneRows(cur.hz, HZN, HZC) : '<p class="empty">Imposta le zone cardiache in Impostazioni.</p>') + '</div></div>';
@@ -1426,7 +1529,7 @@ details summary { cursor: pointer; }
       let h = '<div class="row spread"><h2>' + esc(a.name) + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="small mut">' + dmy(a.start) + ' · ' + esc(a.sport) + ' · ' + (c.cat !== 'other' ? CATNAME[c.cat] : 'altro sport') + ' · importata da Strava</p>' + (c.note ? '<p class="note warn">' + c.note + '</p>' : '');
       h += '<div class="kv"><div><span>Durata</span><b>' + dur(a.mov) + '</b></div><div><span>Distanza</span><b>' + (a.dist ? nf(a.dist / 1000, 1) + ' km' : '—') + '</b></div><div><span>Dislivello</span><b>' + (a.elev ? nf(a.elev) + ' m' : '—') + '</b></div>';
       if (!an) return h + '</div><p class="status"><span class="dot run"></span>Leggo le serie temporali da Strava…</p>';
-      h += '<div><span>Pot. media</span><b>' + (an.hasPower ? nf(an.avgP) + ' W' : '—') + '</b></div><div><span>Pot. massima</span><b>' + (an.hasPower ? nf(an.maxP) + ' W' : '—') + '</b></div><div><span>NP</span><b>' + (an.np != null ? nf(an.np) + ' W' : '—') + '</b></div><div><span>IF</span><b>' + (l ? nf(l.IF, 2) : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (an.hasHr ? nf(an.avgHr) : '—') + '</b></div><div><span>FC massima</span><b>' + (an.hasHr ? nf(an.maxHr) : '—') + '</b></div><div><span>Cadenza</span><b>' + (an.avgCad ? nf(an.avgCad) : '—') + '</b></div></div>';
+      h += '<div><span>Pot. media</span><b>' + (an.hasPower ? nf(an.avgP) + ' W' : '—') + '</b></div><div><span>W/kg medi</span><b>' + (an.hasPower ? wkgTxt(an.avgP, a.start.slice(0, 10)) : '—') + '</b></div><div><span>W/kg NP</span><b>' + (an.np != null ? wkgTxt(an.np, a.start.slice(0, 10)) : '—') + '</b></div><div><span>Pot. massima</span><b>' + (an.hasPower ? nf(an.maxP) + ' W' : '—') + '</b></div><div><span>NP</span><b>' + (an.np != null ? nf(an.np) + ' W' : '—') + '</b></div><div><span>IF</span><b>' + (l ? nf(l.IF, 2) : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (an.hasHr ? nf(an.avgHr) : '—') + '</b></div><div><span>FC massima</span><b>' + (an.hasHr ? nf(an.maxHr) : '—') + '</b></div><div><span>Cadenza</span><b>' + (an.avgCad ? nf(an.avgCad) : '—') + '</b></div></div>';
       if (!an.hasPower) h += '<p class="note">Nessuna potenza misurata in questa attività: potenza, NP, IF e TSS restano vuoti, non vengono stimati.</p>';
       else {
         h += '<p class="small mut">Potenza presente per ' + nf(an.pCov * 100) + '% della durata' + (f ? ' · FTP usata: ' + f.ftp + ' W' + (f.exact ? '' : ' (attuale: a quella data non c’era una FTP registrata)') : ' · nessuna FTP impostata') + (an.np == null ? ' · NP non calcolata: meno di 20 minuti di dati' : '') + '.</p>';
@@ -1489,7 +1592,7 @@ details summary { cursor: pointer; }
     const st = W.planStats(w.blocks), open = UI.open[w.id];
     const peak = Math.max.apply(null, w.blocks.map(b => b.p));
     return '<div class="wk' + (UI.sel === w.id ? ' sel' : '') + '"><div class="row spread"><h4>' + esc(w.name) + '</h4><span class="badge">' + esc(goalName(w.goal)) + '</span></div><p class="small mut">' + esc(w.desc) + '</p>' + wkSvg(w.blocks) +
-      '<div class="meta"><span><b>' + w.dur + '</b> min</span><span>picco <b>' + pct(peak) + '</b>' + (P.ftp ? ' · <b>' + W.targetWatts(P.ftp, peak) + '</b> W' : '') + '</span><span>IF previsto <b>' + nf(st.IF, 2) + '</b></span><span>TSS previsto <b>' + nf(st.tss) + '</b></span></div>' +
+      '<div class="meta"><span><b>' + w.dur + '</b> min</span><span>picco <b>' + pct(peak) + '</b>' + (P.ftp ? ' · <b>' + W.targetWatts(P.ftp, peak) + '</b> W' + (kgAt() ? ' · <b>' + wkgTxt(W.targetWatts(P.ftp, peak)) + '</b> W/kg' : '') : '') + '</span><span>IF previsto <b>' + nf(st.IF, 2) + '</b></span><span>TSS previsto <b>' + nf(st.tss) + '</b></span></div>' +
       '<p class="why">' + esc(w.why) + '</p>' +
       (open ? explain(w, P.ftp) : '') +
       '<div class="row"><button class="btn pri sm" data-act="pick" data-v="' + w.id + '">Apri in consolle</button><button class="btn sm" data-act="toggle" data-v="' + w.id + '">' + (open ? 'Chiudi spiegazione' : 'Spiegazione e intervalli') + '</button><button class="btn sm ghost" data-act="plan" data-v="' + w.id + '">Programma</button></div></div>';
@@ -1673,7 +1776,7 @@ details summary { cursor: pointer; }
       L.lastSec = whole;
       if (pw != null || hr != null) { L.t.push(whole); L.ts.push(Date.now()); L.w.push(pw); L.h.push(hr); L.c.push(cad); }
     }
-    setT('cs-tw', String(tw)); setT('cs-tp', pct(b.p) + ' FTP · FTP ' + L.ftp + ' W');
+    setT('cs-tw', String(tw)); setT('cs-tp', pct(b.p) + ' FTP' + (L.kg ? ' · ' + nf(tw / L.kg, 2) + ' W/kg' : ' · FTP ' + L.ftp + ' W'));
     const pe = document.getElementById('cs-pw');
     if (pe) { const c = 'num' + (pw == null ? ' na' : ''); if (pe.className !== c) pe.className = c; }
     setT('cs-pw', pw == null ? 'n/d' : String(Math.round(pw)));
@@ -1707,7 +1810,7 @@ details summary { cursor: pointer; }
     const now = Date.now();
     if (now - lastBeat > 2000) {
       lastBeat = now;
-      const o = { wid: L.wk.id, ftp: L.ftp, mode: L.mode, timer: L.timer.toJSON(), lastSeen: now, date: L.date };
+      const o = { wid: L.wk.id, ftp: L.ftp, kg: L.kg, mode: L.mode, timer: L.timer.toJSON(), lastSeen: now, date: L.date };
       if (now - lastSave > 30000) { lastSave = now; o.t = L.t; o.ts = L.ts; o.w = L.w; o.h = L.h; o.c = L.c; L.savedSamples = { t: L.t.length }; }
       else { const old = LS.get('watt.live'); if (old && old.t) { o.t = old.t; o.ts = old.ts; o.w = old.w; o.h = old.h; o.c = old.c; } }
       LS.set('watt.live', o);
@@ -1720,10 +1823,10 @@ details summary { cursor: pointer; }
       const s = LS.get('watt.live'); if (!s || !byId(s.wid)) return;
       const tm = W.Timer.fromJSON(s.timer);
       if (tm.pausedAt == null && tm.endAt == null) tm.pause(s.lastSeen);
-      L = { wk: byId(s.wid), ftp: s.ftp, mode: s.mode, timer: tm, t: s.t || [], ts: s.ts || [], w: s.w || [], h: s.h || [], c: s.c || [], lastSec: Math.floor(tm.elapsedMs() / 1000), lastIdx: -1, date: s.date || today(), note: 'Sessione ripristinata: l’interruzione delle ' + hm(s.lastSeen) + ' è stata trattata come pausa.' };
+      L = { wk: byId(s.wid), ftp: s.ftp, kg: s.kg || null, mode: s.mode, timer: tm, t: s.t || [], ts: s.ts || [], w: s.w || [], h: s.h || [], c: s.c || [], lastSec: Math.floor(tm.elapsedMs() / 1000), lastIdx: -1, date: s.date || today(), note: 'Sessione ripristinata: l’interruzione delle ' + hm(s.lastSeen) + ' è stata trattata come pausa.' };
     } else {
       const wk = byId(UI.sel); if (!wk || !P.ftp) return;
-      L = { wk: wk, ftp: P.ftp, mode: P.mode, timer: new W.Timer(), t: [], ts: [], w: [], h: [], c: [], lastSec: -1, lastIdx: -1, date: today(), note: '' };
+      L = { wk: wk, ftp: P.ftp, kg: kgAt() ? kgAt().kg : null, mode: P.mode, timer: new W.Timer(), t: [], ts: [], w: [], h: [], c: [], lastSec: -1, lastIdx: -1, date: today(), note: '' };
       L.timer.start();
     }
     live = L; lastBeat = 0; lastSave = Date.now();
@@ -1745,7 +1848,7 @@ details summary { cursor: pointer; }
     let rec = null;
     if (saveIt && elapsed >= 60) {
       const an = W.analyze({ time: L.t, watts: L.w.some(v => v != null) ? L.w : null, heart_rate: L.h.some(v => v != null) ? L.h : null, cadence: L.c.some(v => v != null) ? L.c : null });
-      rec = { id: 's' + L.timer.startAt, date: L.date, wid: L.wk.id, name: L.wk.name, mode: L.mode, ftp: L.ftp, planned: total, elapsed: elapsed, pct: Math.min(100, (elapsed / total) * 100), avgP: an.hasPower ? Math.round(an.avgP) : null, maxP: an.hasPower ? an.maxP : null, np: an.np != null ? Math.round(an.np) : null, pSec: an.pSec || 0, avgHr: an.hasHr ? Math.round(an.avgHr) : null, maxHr: an.hasHr ? an.maxHr : null, hSec: an.hSec || 0, curve: an.curve || null };
+      rec = { id: 's' + L.timer.startAt, date: L.date, wid: L.wk.id, name: L.wk.name, mode: L.mode, ftp: L.ftp, kg: L.kg, planned: total, elapsed: elapsed, pct: Math.min(100, (elapsed / total) * 100), avgP: an.hasPower ? Math.round(an.avgP) : null, maxP: an.hasPower ? an.maxP : null, np: an.np != null ? Math.round(an.np) : null, pSec: an.pSec || 0, avgHr: an.hasHr ? Math.round(an.avgHr) : null, maxHr: an.hasHr ? an.maxHr : null, hSec: an.hSec || 0, curve: an.curve || null };
       rec.startAt = L.timer.startAt;
       if (L.ts.length) LS.set('watt.smp.' + rec.id, { start: L.timer.startAt, t: L.t, ts: L.ts, w: L.w, h: L.h, c: L.c });
       P.sessions = [rec].concat(P.sessions || []).slice(0, 150);
@@ -1762,7 +1865,7 @@ details summary { cursor: pointer; }
   function doneBody(rec) {
       const completed = rec.completed;
       const l = rec.np != null ? W.load({ np: rec.np, pSec: rec.pSec }, rec.ftp) : null;
-      return ('<div class="row spread"><h2>' + (completed ? 'Allenamento concluso' : 'Sessione terminata') + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="mut">' + esc(rec.name) + ' · ' + (rec.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + ' · FTP ' + rec.ftp + ' W</p><div class="kv"><div><span>Svolto</span><b>' + W.fmtTime(rec.elapsed) + '</b></div><div><span>Completato</span><b>' + nf(rec.pct) + '%</b></div><div><span>Pot. media</span><b>' + (rec.avgP != null ? rec.avgP + ' W' : 'n/d') + '</b></div><div><span>NP</span><b>' + (rec.np != null ? rec.np + ' W' : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (rec.avgHr != null ? rec.avgHr : 'n/d') + '</b></div></div><p class="small mut">' + (rec.avgP == null ? 'Nessun sensore di potenza collegato: la potenza effettiva non è stata registrata e il target non la sostituisce. ' : 'Potenza registrata per ' + W.fmtTime(rec.pSec) + '. ') + 'La sessione è salvata in WATT.</p>' + sessActions(rec));
+      return ('<div class="row spread"><h2>' + (completed ? 'Allenamento concluso' : 'Sessione terminata') + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="mut">' + esc(rec.name) + ' · ' + (rec.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + ' · FTP ' + rec.ftp + ' W' + (rec.kg ? ' (' + nf(rec.ftp / rec.kg, 2) + ' W/kg a ' + nf(rec.kg, 1) + ' kg)' : '') + '</p><div class="kv"><div><span>Svolto</span><b>' + W.fmtTime(rec.elapsed) + '</b></div><div><span>Completato</span><b>' + nf(rec.pct) + '%</b></div><div><span>Pot. media</span><b>' + (rec.avgP != null ? rec.avgP + ' W' : 'n/d') + '</b></div><div><span>W/kg medi</span><b>' + (rec.avgP != null && rec.kg ? nf(rec.avgP / rec.kg, 2) : 'n/d') + '</b></div><div><span>NP</span><b>' + (rec.np != null ? rec.np + ' W' : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (rec.avgHr != null ? rec.avgHr : 'n/d') + '</b></div></div><p class="small mut">' + (rec.avgP == null ? 'Nessun sensore di potenza collegato: la potenza effettiva non è stata registrata e il target non la sostituisce. ' : 'Potenza registrata per ' + W.fmtTime(rec.pSec) + '. ') + 'La sessione è salvata in WATT.</p>' + sessActions(rec));
   }
 
   /* ---------- Portare una sessione su Strava ---------- */
@@ -2034,7 +2137,7 @@ details summary { cursor: pointer; }
       const dl = await use('downloads');
       if (!dl) throw { code: 'unavailable' };
       const files = await Promise.all(['style.css', 'core.js', 'app.js'].map(f => fetch(f).then(r => { if (!r.ok) throw { code: 'fetch' }; return r.text(); })));
-      const seed = { ftp: P.ftp, ftpHist: P.ftpHist, hrz: P.hrz, hrSrc: P.hrSrc, restHr: P.restHr, lthr: P.lthr, mode: P.mode, voice: P.voice, erg: P.erg, plan: P.plan };
+      const seed = { ftp: P.ftp, ftpHist: P.ftpHist, hrz: P.hrz, hrSrc: P.hrSrc, restHr: P.restHr, lthr: P.lthr, weights: P.weights, mode: P.mode, voice: P.voice, erg: P.erg, plan: P.plan };
       await dl.save({ filename: 'watt-consolle.html', data: buildStandalone(files[0], files[1], files[2], seed) });
     } catch (e) {
       if (e && e.code === 'declined') return;
@@ -2048,6 +2151,15 @@ details summary { cursor: pointer; }
     let h = '<h2>Impostazioni</h2>';
     h += '<div class="card"><h3>FTP</h3><div class="row" style="align-items:flex-end"><div class="field"><label for="in-ftp">FTP attuale (W)</label><input type="number" id="in-ftp" min="50" max="600" step="1" inputmode="numeric" value="' + (P.ftp || '') + '"></div><button class="btn pri" data-act="saveFtp">Salva FTP</button>' + (strava.ftp && strava.ftp !== P.ftp ? '<button class="btn" data-act="useStravaFtp">Usa quella di Strava (' + strava.ftp + ' W)</button>' : '') + '</div><div class="kv"><div><span>Inserita</span><b>' + (P.ftp ? P.ftp + ' W' : '—') + '</b></div><div><span>Su Strava' + (strava.ftpEst ? ' (stimata)' : '') + '</span><b>' + (strava.ftp ? strava.ftp + ' W' : '—') + '</b></div><div><span>Stimata dai 20 min</span><b>' + (est ? '≈ ' + est.ftp + ' W' : '—') + '</b></div></div><p class="small mut">Tutti i target dei workout sono FTP × intensità. Ogni sessione conserva la FTP con cui è stata svolta, quindi cambiarla non altera lo storico. La stima (95% dei migliori 20 min degli ultimi 90 giorni) è un’indicazione, non una misura: vale solo se quei 20 minuti erano uno sforzo massimale.</p>';
     h += '<h3>Storico FTP</h3>' + ((P.ftpHist || []).length ? '<div class="tw"><table><tbody>' + P.ftpHist.slice().reverse().map(x => '<tr><td>' + dmy(x.date) + '</td><td class="r"><b>' + x.ftp + ' W</b></td><td>' + srcName(x.src) + '</td><td class="r"><button class="btn sm ghost" data-act="delFtp" data-v="' + x.date + '">Elimina</button></td></tr>').join('') + '</tbody></table></div>' : '<p class="empty">Nessuna voce.</p>') + '<div class="row" style="align-items:flex-end"><div class="field"><label for="in-hd">Data</label><input type="date" id="in-hd" max="' + today() + '"></div><div class="field"><label for="in-hf">FTP (W)</label><input type="number" id="in-hf" min="50" max="600" step="1" inputmode="numeric"></div><button class="btn" data-act="addFtp">Aggiungi voce passata</button></div><p class="small mut">Le voci passate servono a calcolare zone, IF e TSS delle attività vecchie con la FTP che avevi allora.</p></div>';
+    {
+      const k = kgAt(today()), ws = (P.weights || []).slice().reverse();
+      h += '<div class="card"><h3>Peso</h3><div class="kv"><div><span>Peso attuale</span><b>' + (k ? nf(k.kg, 1) + ' kg' : '—') + '</b></div><div><span>FTP in W/kg</span><b>' + (P.ftp && k ? wkgTxt(P.ftp, today()) : '—') + '</b></div><div><span>Origine</span><b style="font-size:16px">' + (!k ? '—' : k.src === 'strava' ? 'profilo Strava' : (ws.find(x => x.date === k.date) || {}).src === 'renpho' ? 'Renpho, ' + dmy(k.date) : 'inserito, ' + dmy(k.date)) + '</b></div></div>' +
+        '<div class="row" style="align-items:flex-end"><div class="field"><label for="in-kd">Data</label><input type="date" id="in-kd" max="' + today() + '" value="' + today() + '"></div><div class="field"><label for="in-kg">Peso (kg)</label><input type="number" id="in-kg" min="30" max="250" step="0.1" inputmode="decimal" style="max-width:120px"></div><button class="btn pri" data-act="addKg">Salva peso</button></div>' +
+        '<div class="row"><label class="btn" for="in-csv" style="display:inline-flex;align-items:center;cursor:pointer">Importa le pesate da Renpho (CSV)</label><input type="file" id="in-csv" accept=".csv,text/csv,text/plain,text/comma-separated-values" data-chg="renpho" hidden></div>' +
+        '<p class="small mut">In Renpho Health apri l’andamento del peso ed esporta i dati in CSV; poi scegli qui il file. Vengono lette data e peso (kg o libbre), una pesata per giorno; i pesi inseriti a mano non vengono sovrascritti. Se il file non viene riconosciuto, manda a Claude le prime tre righe.</p>' +
+        (ws.length ? '<div class="tw"><table><tbody>' + ws.slice(0, 8).map(x => '<tr><td>' + dmy(x.date) + '</td><td class="r"><b>' + nf(x.kg, 1) + ' kg</b></td><td>' + (x.src === 'renpho' ? 'Renpho' : 'inserito') + '</td><td class="r">' + (P.ftp ? nf(W.ftpAt(P.ftpHist, x.date, P.ftp).ftp / x.kg, 2) + ' W/kg' : '') + '</td><td class="r"><button class="btn sm ghost" data-act="delKg" data-v="' + x.date + '">Elimina</button></td></tr>').join('') + '</tbody></table></div>' + (ws.length > 8 ? '<p class="small mut">' + ws.length + ' pesate in tutto; mostrate le 8 più recenti.</p>' : '') : '') +
+        '</div>';
+    }
     const z = P.hrz || [null, null, null, null];
     h += '<div class="card"><h3>Zone cardiache</h3><div class="row" style="align-items:flex-end">' + [0, 1, 2, 3].map(i => '<div class="field"><label for="in-hz' + i + '">Z' + (i + 1) + ' fino a (bpm)</label><input type="number" id="in-hz' + i + '" min="60" max="230" step="1" inputmode="numeric" style="max-width:110px" value="' + (z[i] || '') + '"></div>').join('') + '<button class="btn pri" data-act="saveHr">Salva zone</button>' + (strava.hrz ? '<button class="btn" data-act="useStravaHr">Importa da Strava</button>' : '') + '</div><p class="small mut">Z5 è tutto ciò che supera il limite di Z4. ' + (P.hrSrc === 'strava' ? 'Valori attuali importati da Strava.' : P.hrz ? 'Valori inseriti a mano.' : 'Nessun valore impostato.') + '</p>' +
       '<div class="row" style="align-items:flex-end"><div class="field"><label for="in-rest">FC a riposo (bpm)</label><input type="number" id="in-rest" min="30" max="100" step="1" inputmode="numeric" style="max-width:110px" value="' + (P.restHr || '') + '"></div><div class="field"><label for="in-lthr">FC di soglia (bpm)</label><input type="number" id="in-lthr" min="100" max="220" step="1" inputmode="numeric" style="max-width:110px" value="' + (P.lthr || '') + '" placeholder="' + (P.hrz ? P.hrz[2] + 1 : '') + '"></div><button class="btn" data-act="saveHrRef">Salva</button></div><p class="small mut">Servono a stimare il carico dalle attività senza potenza. FC di soglia: la FC che tieni per circa un’ora al massimo; se vuota si usa l’inizio della tua Z4 (' + (P.hrz ? P.hrz[2] + 1 : '—') + ' bpm).</p></div>';
@@ -2069,6 +2181,29 @@ details summary { cursor: pointer; }
     if (!SA) h += '<div class="card"><h3>Strava</h3><div class="status" id="syncline">' + syncLine() + '</div><div class="row" style="align-items:flex-end"><div class="field"><label for="in-months">Storico da importare</label><select id="in-months" data-chg="months"><option value="6"' + (P.months === 6 ? ' selected' : '') + '>6 mesi</option><option value="12"' + (P.months === 12 ? ' selected' : '') + '>12 mesi</option><option value="24"' + (P.months === 24 ? ' selected' : '') + '>24 mesi</option></select></div><button class="btn pri" data-act="sync">Sincronizza ora</button><button class="btn ghost" data-act="clearActs">Svuota attività importate</button></div><p class="small mut">Il collegamento passa dal connettore Strava del tuo account Claude: nessun Client Secret, nessun token e nessun Callback Domain in questa pagina. È in sola lettura, quindi WATT non può caricare sessioni su Strava. L’importazione è incrementale e senza duplicati: ogni attività è salvata una sola volta con il suo identificativo Strava. Le attività importate restano in questo browser e si riscaricano su un altro dispositivo.</p></div>';
     h += '<div class="card"><h3>Avvisi e salvataggio</h3><div class="row"><label class="check"><input type="checkbox" id="set-voice" data-chg="voice"' + (P.voice ? ' checked' : '') + '>Avvisi vocali a inizio sessione, cambio intervallo e conclusione</label><button class="btn sm" data-act="testVoice">Prova voce</button></div><div class="status"><span class="dot ' + (UI.store === 'account' ? 'ok' : 'run') + '"></span><span>' + (SA ? 'Consolle autonoma: impostazioni e sessioni restano in questo browser. FTP e zone sono quelle che avevi in WATT quando l’hai scaricata.' : UI.store === 'account' ? 'FTP, zone, programma e sessioni sono salvati nel tuo spazio privato di questa pagina e ti seguono su ogni dispositivo.' : 'FTP, zone, programma e sessioni sono salvati solo in questo browser' + (UI.storeErr ? ' (salvataggio sull’account non riuscito: ' + esc(UI.storeErr) + ')' : '') + '.') + '</span></div></div>';
     return h;
+  }
+
+  function setKg(date, kg, src) {
+    const list = (P.weights || []).filter(x => x.date !== date);
+    list.push({ date: date, kg: Math.round(kg * 10) / 10, src: src });
+    list.sort((a, b) => (a.date < b.date ? -1 : 1));
+    P.weights = list.slice(-2000);
+  }
+  async function importRenpho(input) {
+    const f = input.files && input.files[0];
+    input.value = '';
+    if (!f) return;
+    let text = '';
+    try { text = await f.text(); } catch (e) { text = ''; }
+    const r = W.parseWeightCsv(text);
+    if (r.error) return openModal('<div class="row spread"><h2>File non riconosciuto</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>' + esc(r.error) + '</p><p class="small mut">Manda a Claude le prime tre righe del file: adatto il lettore al formato di Renpho.</p>');
+    const manual = {};
+    (P.weights || []).forEach(x => { if (x.src !== 'renpho') manual[x.date] = true; });
+    let added = 0, kept = 0;
+    r.rows.forEach(x => { if (manual[x.date]) { kept++; return; } setKg(x.date, x.kg, 'renpho'); added++; });
+    save(); render();
+    const lst = r.rows[r.rows.length - 1];
+    openModal('<div class="row spread"><h2>Pesate importate</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>' + added + ' pesate dal ' + dmy(r.rows[0].date) + ' al ' + dmy(lst.date) + '. Ultima: <b>' + nf(lst.kg, 1) + ' kg</b>' + (P.ftp ? ' · FTP ' + nf(P.ftp / kgAt(today()).kg, 2) + ' W/kg' : '') + '.</p>' + (kept ? '<p class="small mut">' + kept + ' giorni avevano già un peso inserito a mano: tenuto quello.</p>' : '') + (r.skipped ? '<p class="small mut">' + r.skipped + ' righe senza data o peso valido sono state ignorate.</p>' : ''));
   }
 
   /* ---------- Rendering e azioni ---------- */
@@ -2121,6 +2256,8 @@ details summary { cursor: pointer; }
     saveHr: () => { const z = [0, 1, 2, 3].map(i => numVal('in-hz' + i)); if (z.some(v => v == null) || !(z[0] < z[1] && z[1] < z[2] && z[2] < z[3])) return openModal('<div class="row spread"><h2>Zone non valide</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Servono quattro limiti crescenti in bpm.</p>'); P.hrz = z.map(Math.round); P.hrSrc = 'manuale'; save(); render(); },
     useStravaHr: () => { if (strava.hrz) { P.hrz = strava.hrz.slice(); P.hrSrc = 'strava'; save(); render(); } },
     clearActs: () => { acts = {}; ans = {}; syncInfo = { at: null }; LS.del('watt.acts'); LS.del('watt.an'); LS.del('watt.sync'); setSync('idle', ''); render(); },
+    addKg: () => { const v = numVal('in-kg'), e = document.getElementById('in-kd'), d = e && e.value; if (v == null || v < 30 || v > 250 || !d || d > today()) return openModal('<div class="row spread"><h2>Peso non valido</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Servono una data non futura e un peso tra 30 e 250 kg.</p>'); setKg(d, v, 'manuale'); save(); render(); },
+    delKg: v => { P.weights = (P.weights || []).filter(x => x.date !== v); save(); render(); },
     copyNote: (v, b) => { const w = byId(v); if (w) copyText(W.stravaNote(w, P.ftp), b); },
     copySess: (v, b) => { const r = (P.sessions || []).find(x => x.id === v); if (r) copyText(sessNote(r), b); },
     tcx: v => downloadTcx(v),
@@ -2143,6 +2280,7 @@ details summary { cursor: pointer; }
     else if (k === 'erg') { P.erg = !!e.target.checked; save(); }
     else if (k === 'months') { P.months = +e.target.value || 6; save(); }
     else if (k === 'autoUp') { P.autoUp = !!e.target.checked; save(); }
+    else if (k === 'renpho') importRenpho(e.target);
   });
   const tip = $('#tip');
   function showTip(e) {
