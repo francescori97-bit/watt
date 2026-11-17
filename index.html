@@ -156,66 +156,62 @@ tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
 .kv div b { font-family: var(--display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .tip { position: fixed; z-index: 50; pointer-events: none; background: #0f1114; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; max-width: 260px; box-shadow: 0 6px 20px rgba(0, 0, 0, .5); }
 
-/* ---------- Consolle a tutto schermo ---------- */
-.cs { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto auto; gap: 8px; padding: 8px 10px 10px; height: 100%; overflow: hidden; }
-.cs-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--mut); min-height: 28px; }
+/* ---------- Consolle a tutto schermo: grafico, target, timer, FC + zona, tempo trascorso ---------- */
+.cs { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; gap: 8px; padding: 8px 10px 10px; height: 100%; overflow: hidden;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto clamp(80px, 16vh, 170px) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr) auto auto auto;
+  grid-template-areas: 'top' 'ch' 'tg' 'it' 'pr' 'el' 'ctl' 'msg'; }
+.cs-top { grid-area: top; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--mut); min-height: 24px; }
 .cs-top b { color: var(--fg); font-family: var(--display); font-size: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cs-conn { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
-.cs-main { display: grid; gap: 8px; min-height: 0; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1.25fr 1fr; grid-template-areas: 'tg pw' 'it it' 'hr zn'; }
-.cs-cell { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 0; min-width: 0; overflow: hidden; text-align: center; }
-.cs-cell label { font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .08em; }
-.cs-cell b { font-family: var(--display); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: clamp(40px, 11vh, 110px); }
-.cs-cell b small { font-size: .35em; color: var(--mut); font-weight: 500; margin-left: 4px; }
-.cs-cell .s { font-size: 13px; color: var(--mut); min-height: 18px; }
-.cs-tg { grid-area: tg; } .cs-tg b { color: var(--acc); }
-.cs-pw { grid-area: pw; } .cs-pw b.na { color: var(--mut); font-size: clamp(28px, 7vh, 64px); }
-.cs-it { grid-area: it; border-top: 4px solid var(--z1); } .cs-it b { font-size: clamp(64px, 17vh, 170px); }
-.cs-hr { grid-area: hr; } .cs-hr b { color: #ff5d73; } .cs-hr b.na { color: var(--mut); font-size: clamp(28px, 7vh, 64px); }
-.cs-zn { grid-area: zn; gap: 6px; }
-.zpair { display: flex; gap: 10px; align-items: stretch; justify-content: center; width: 100%; }
-.zbox { flex: 1; max-width: 150px; border-radius: 8px; padding: 4px; background: var(--bg); border: 1px solid var(--line); }
-.zbox span { display: block; font-size: 10px; color: var(--mut); text-transform: uppercase; letter-spacing: .06em; }
-.zbox b { font-size: clamp(26px, 6vh, 56px); display: block; border-radius: 6px; color: #111; }
-.zbox b.na { color: var(--mut); background: transparent; }
-.cs-prog .bar { height: 10px; background: var(--panel2); border-radius: 5px; overflow: hidden; }
-.cs-prog .bar i { display: block; height: 100%; width: 0; background: var(--acc); }
-.cs-prog .r { display: flex; justify-content: space-between; align-items: baseline; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--mut); margin-top: 3px; }
-.cs-prog .r b { color: var(--fg); font-family: var(--display); font-size: 22px; }
-.cs-chart { position: relative; height: clamp(44px, 11vh, 110px); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.cs-chart { grid-area: ch; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .cs-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .cs-done { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, .45); }
 .cs-cur { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px #000, 0 0 10px #fff; }
-.cs-next { font-size: 14px; color: var(--mut); text-align: center; min-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cs-next b { color: var(--fg); }
-.cs-ctl { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; }
+.cs-cell { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 0; min-width: 0; overflow: hidden; text-align: center; }
+.cs-cell label { font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .08em; }
+.cs-cell b { font-family: var(--display); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+.cs-cell b small { font-size: .38em; color: var(--mut); font-weight: 500; margin-left: 6px; }
+.cs-cell .s { font-size: 14px; color: var(--mut); min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cs-tg { grid-area: tg; } .cs-tg b { font-size: clamp(48px, 11vh, 120px); color: var(--acc); }
+.cs-it { grid-area: it; border-top: 4px solid var(--z1); } .cs-it b { font-size: clamp(64px, 15vh, 170px); }
+.cs-pair { grid-area: pr; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 0; }
+.cs-hr b { font-size: clamp(40px, 9vh, 96px); color: #ff5d73; }
+.cs-hr b.na { color: var(--mut); font-size: clamp(30px, 6vh, 64px); }
+.cs-zn b { font-size: clamp(40px, 9vh, 96px); color: #111; border-radius: 10px; padding: 2px 18px; }
+.cs-zn b.na { color: var(--mut); background: transparent; }
+.cs-el { grid-area: el; padding: 6px 12px; }
+.cs-el b { font-size: clamp(30px, 5vh, 56px); }
+.cs-el .bar { width: 100%; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
+.cs-el .bar i { display: block; height: 100%; width: 0; background: var(--acc); }
+.cs-ctl { grid-area: ctl; display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; }
 .cs-ctl .btn { min-height: 56px; font-size: 18px; font-family: var(--display); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
-.cs-msg { color: var(--warn); font-size: 13px; text-align: center; }
+.cs-msg { grid-area: msg; color: var(--warn); font-size: 13px; text-align: center; }
+.cs-msg:empty { display: none; }
 .cs-confirm { position: absolute; inset: 0; background: rgba(0, 0, 0, .78); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 3; }
 .cs-confirm .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
 .cs-confirm .btn { min-height: 52px; }
 .cs.paused .cs-it b { color: var(--warn); }
 @media (orientation: landscape) and (max-height: 560px) {
-  .cs { grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-columns: minmax(0, 1fr) 170px; column-gap: 8px; }
-  .cs-top { grid-column: 1 / -1; }
-  .cs-main { grid-template-columns: 1fr 1.3fr 1fr; grid-template-rows: 1fr 1fr; grid-template-areas: 'tg it hr' 'pw it zn'; }
-  .cs-prog { grid-column: 1; }
-  .cs-chart { grid-column: 1; height: clamp(36px, 14vh, 70px); }
-  .cs-next { display: none; }
-  .cs-ctl { grid-column: 2; grid-row: 2 / 5; grid-template-columns: 1fr; grid-template-rows: 2fr 1fr auto; }
-  .cs-cell { padding: 3px 8px; }
-  .cs-cell label { font-size: 10px; }
-  .cs-cell .s { font-size: 11px; min-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-  .cs-cell b { font-size: clamp(26px, 13vh, 72px); }
-  .cs-pw b.na, .cs-hr b.na { font-size: clamp(20px, 9vh, 44px); }
-  .cs-it b { font-size: clamp(48px, 26vh, 130px); }
-  .cs-zn { gap: 3px; }
-  .zbox { padding: 2px 4px; }
-  .zbox b { font-size: clamp(18px, 8vh, 38px); }
-  .cs-msg { grid-column: 1 / -1; }
+  .cs { grid-template-columns: 1fr 1.25fr 1fr 150px;
+    grid-template-rows: auto clamp(50px, 22vh, 110px) minmax(0, 1fr) auto auto;
+    grid-template-areas: 'top top top top' 'ch ch ch ctl' 'tg it pr ctl' 'el el el ctl' 'msg msg msg msg'; }
+  .cs-pair { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .cs-ctl { grid-template-columns: 1fr; grid-template-rows: 2fr 1fr auto; }
+  .cs-cell { padding: 2px 6px; }
+  .cs-cell .s { font-size: 11px; min-height: 14px; }
+  .cs-tg b { font-size: clamp(32px, 16vh, 84px); }
+  .cs-it b { font-size: clamp(44px, 22vh, 120px); }
+  .cs-hr b, .cs-zn b { font-size: clamp(22px, 9vh, 48px); }
+  .cs-hr b.na { font-size: clamp(18px, 7vh, 36px); }
+  .cs-el { flex-direction: row; gap: 12px; padding: 4px 10px; }
+  .cs-el b { font-size: clamp(22px, 8vh, 40px); }
+  .cs-el .bar { flex: 1; margin: 0; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .cs-prog .bar i, .cs-cur, .cs-done { transition: all .25s linear; }
+  .cs-el .bar i, .cs-cur, .cs-done { transition: all .25s linear; }
 }
+
 
 .why { font-size: 14px; color: var(--fg); border-left: 3px solid var(--acc); padding-left: 10px; }
 .ex { display: flex; flex-direction: column; gap: 10px; background: var(--bg); border-radius: 8px; padding: 10px; }
@@ -1742,16 +1738,12 @@ details summary { cursor: pointer; }
   function buildConsole() {
     const L = live, el = $('#console');
     el.innerHTML = '<div class="cs-top"><b>' + esc(L.wk.name) + '</b><div class="cs-conn" id="cs-conn"></div></div>' +
-      '<div class="cs-main">' +
-      '<div class="cs-cell cs-tg"><label>Target</label><b class="num" id="cs-tw">—</b><div class="s" id="cs-tp"></div></div>' +
-      '<div class="cs-cell cs-pw"><label>Potenza effettiva</label><b class="num" id="cs-pw">n/d</b><div class="s" id="cs-cad"></div></div>' +
-      '<div class="cs-cell cs-it" id="cs-itc"><label id="cs-il">Intervallo</label><b class="num" id="cs-it">0:00</b><div class="s" id="cs-in"></div></div>' +
-      '<div class="cs-cell cs-hr"><label>Frequenza cardiaca</label><b class="num" id="cs-hr">n/d</b><div class="s" id="cs-hz"></div></div>' +
-      '<div class="cs-cell cs-zn"><label>Zona di potenza</label><div class="zpair"><div class="zbox"><span>Target</span><b class="num" id="cs-zt">—</b></div><div class="zbox"><span>Effettiva</span><b class="num na" id="cs-ze">n/d</b></div></div></div>' +
-      '</div>' +
-      '<div class="cs-prog"><div class="bar"><i id="cs-bar"></i></div><div class="r"><span id="cs-el">0:00</span><b id="cs-pc">0%</b><span id="cs-rm"></span></div></div>' +
       '<div class="cs-chart">' + wkSvg(L.wk.blocks).replace('class="wsvg"', '') + '<div class="cs-done" id="cs-done"></div><div class="cs-cur" id="cs-cur"></div></div>' +
-      '<div class="cs-next" id="cs-next"></div>' +
+      '<div class="cs-cell cs-tg"><label>Target</label><b class="num"><span id="cs-tw">—</span><small>W</small></b><div class="s" id="cs-tp"></div></div>' +
+      '<div class="cs-cell cs-it" id="cs-itc"><label id="cs-il">Intervallo</label><b class="num" id="cs-it">0:00</b><div class="s" id="cs-in"></div></div>' +
+      '<div class="cs-pair"><div class="cs-cell cs-hr"><label>Frequenza cardiaca</label><b class="num" id="cs-hr">n/d</b><div class="s" id="cs-hz"></div></div>' +
+      '<div class="cs-cell cs-zn"><label>Zona di potenza</label><b class="num" id="cs-zt">—</b><div class="s" id="cs-zn"></div></div></div>' +
+      '<div class="cs-cell cs-el"><label>Tempo trascorso</label><b class="num" id="cs-el">0:00</b><div class="bar"><i id="cs-bar"></i></div><div class="s"><span id="cs-pc">0%</span> · <span id="cs-rm"></span></div></div>' +
       '<div class="cs-ctl"><button class="btn pri" id="cs-pause" data-act="pause">Pausa</button><button class="btn danger" data-act="askEnd">Termina</button><button class="btn" data-act="fs" aria-label="Schermo intero">⛶</button></div>' +
       '<div class="cs-msg" id="cs-msg"></div>' +
       '<div class="cs-confirm" id="cs-confirm" hidden><div class="box"><h2>Terminare la sessione?</h2><p class="mut">Il lavoro svolto finora viene salvato tra le sessioni registrate.</p><button class="btn pri" data-act="keep">Continua l’allenamento</button><button class="btn" data-act="endSave">Termina e salva</button><button class="btn danger" data-act="endDrop">Termina senza salvare</button></div></div>';
@@ -1781,19 +1773,20 @@ details summary { cursor: pointer; }
     if (pe) { const c = 'num' + (pw == null ? ' na' : ''); if (pe.className !== c) pe.className = c; }
     setT('cs-pw', pw == null ? 'n/d' : String(Math.round(pw)));
     setT('cs-cad', L.mode !== 'rivo' ? 'nessun sensore di potenza' : (T.state === 'lost' ? 'segnale del rullo perso' : T.state !== 'on' ? 'rullo non collegato' : cad != null ? Math.round(cad) + ' rpm' : pw == null ? 'in attesa di dati' : ''));
-    setT('cs-it', W.fmtTime(Math.ceil(loc.left))); setT('cs-il', W.blockLabel(b) + ' · resta'); setT('cs-in', 'intervallo ' + (loc.idx + 1) + ' di ' + L.wk.blocks.length + ' · ' + W.fmtTime(b.d));
+    setT('cs-it', W.fmtTime(Math.ceil(loc.left))); setT('cs-il', W.blockLabel(b) + ' · resta'); const nxb = L.wk.blocks[loc.idx + 1];
+    setT('cs-in', nxb ? 'poi ' + W.fmtTime(nxb.d) + ' a ' + W.targetWatts(L.ftp, nxb.p) + ' W' : 'ultimo intervallo');
     const itc = document.getElementById('cs-itc'); if (itc) itc.style.borderTopColor = 'var(--z' + W.zoneOfFrac(b.p) + ')';
     const he = document.getElementById('cs-hr');
     if (he) { const c = 'num' + (hr == null ? ' na' : ''); if (he.className !== c) he.className = c; }
     setT('cs-hr', hr == null ? 'n/d' : String(hr));
     const hz = W.zoneOfHr(hr, P.hrz);
     setT('cs-hz', hr == null ? (H.state === 'lost' ? 'segnale FC perso' : 'nessun sensore FC') : (hz ? 'Z' + hz + ' · ' + HZN[hz - 1] : 'bpm'));
-    zBox('cs-zt', W.zoneOfFrac(b.p)); zBox('cs-ze', W.zoneOfWatts(pw, L.ftp));
+    zBox('cs-zt', W.zoneOfFrac(b.p)); setT('cs-zn', W.PZ[W.zoneOfFrac(b.p) - 1].name);
     const pc = (sec / T0) * 100;
     const bar = document.getElementById('cs-bar'); if (bar) bar.style.width = pc.toFixed(2) + '%';
     const cur = document.getElementById('cs-cur'); if (cur) cur.style.left = pc.toFixed(2) + '%';
     const dn = document.getElementById('cs-done'); if (dn) dn.style.width = pc.toFixed(2) + '%';
-    setT('cs-pc', Math.floor(pc) + '%'); setT('cs-el', 'trascorso ' + W.fmtTime(sec)); setT('cs-rm', 'restano ' + W.fmtTime(Math.ceil(T0 - sec)));
+    setT('cs-pc', Math.floor(pc) + '%'); setT('cs-el', W.fmtTime(sec)); setT('cs-rm', 'restano ' + W.fmtTime(Math.ceil(T0 - sec)));
     const nx = L.wk.blocks[loc.idx + 1], ne = document.getElementById('cs-next');
     if (ne) { const t = nx ? 'Prossimo: <b>' + W.blockLabel(nx) + '</b> · ' + W.fmtTime(nx.d) + ' al ' + pct(nx.p) + ' · <b>' + W.targetWatts(L.ftp, nx.p) + ' W</b>' : 'Ultimo intervallo'; if (ne.dataset.k !== String(loc.idx)) { ne.dataset.k = String(loc.idx); ne.innerHTML = t; } }
     const paused = !L.timer.running();
