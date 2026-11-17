@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WATT · consolle</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Condensed:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+:root {
+  /* consolle scura: antracite, pannelli scuri, arancione come colore d'azione; zone con colori fissi ovunque */
+  --bg: #16181d;
+  --panel: #21242b;
+  --panel2: #2b2f38;
+  --line: #3a3f4b;
+  --fg: #f3f4f6;
+  --mut: #9ba3b0;
+  --acc: #ff6a1a;
+  --acc-ink: #1a0d04;
+  --ok: #4cc38a;
+  --bad: #f0483e;
+  --warn: #f5c542;
+  --z1: #8b929e;
+  --z2: #3b9eff;
+  --z3: #4cc38a;
+  --z4: #f5c542;
+  --z5: #ff8a3d;
+  --z6: #f0483e;
+  --z7: #b072ff;
+  --c-virt: #ff6a1a;
+  --c-indoor: #ffb37d;
+  --c-outdoor: #3b9eff;
+  --c-other: #6b7380;
+  --display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-text-size-adjust: 100%; }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--acc); }
+:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.app { min-height: 100%; display: flex; flex-direction: column; }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 20px; padding: 10px 16px; background: rgba(22, 24, 29, .96); border-bottom: 1px solid var(--line); }
+.brand { font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: .12em; color: var(--acc); }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tabs a { color: var(--mut); text-decoration: none; padding: 8px 12px; border-radius: 8px; font-weight: 500; }
+.tabs a.on { color: var(--fg); background: var(--panel2); box-shadow: inset 0 -2px 0 var(--acc); }
+main { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 640px) {
+  .top { justify-content: center; padding: 6px 12px; }
+  .brand { font-size: 20px; }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: #1b1e24; border-top: 1px solid var(--line); gap: 0; flex-wrap: nowrap; }
+  .tabs a { flex: 1; text-align: center; padding: 14px 2px; border-radius: 0; font-size: 13px; }
+  .tabs a.on { box-shadow: inset 0 2px 0 var(--acc); }
+  main { padding: 12px 12px 76px; }
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: .03em; margin: 0; text-wrap: balance; }
+h2 { font-size: 22px; text-transform: uppercase; }
+h3 { font-size: 17px; text-transform: uppercase; color: var(--mut); }
+p { margin: 0; }
+.mut { color: var(--mut); }
+.small { font-size: 13px; }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+
+.btn { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-weight: 500; min-height: 40px; }
+.btn:hover { border-color: var(--mut); }
+.btn.pri { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 600; }
+.btn.pri:disabled { opacity: .4; cursor: not-allowed; }
+.btn.ghost { background: transparent; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.sm { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+
+.seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+.seg button { background: transparent; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; color: var(--mut); font-weight: 500; min-height: 32px; }
+.seg button.on { background: var(--panel2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--acc); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; color: var(--mut); font-size: 13px; min-height: 32px; }
+.chip.on { border-color: var(--acc); color: var(--fg); background: rgba(255, 106, 26, .14); }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: var(--mut); text-transform: uppercase; letter-spacing: .06em; }
+input[type=number], input[type=date], select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 40px; width: 100%; max-width: 180px; }
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--acc); }
+
+.status { font-size: 13px; color: var(--mut); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mut); display: inline-block; flex: none; }
+.dot.ok { background: var(--ok); } .dot.err { background: var(--bad); } .dot.run { background: var(--warn); }
+.note { font-size: 13px; color: var(--mut); border-left: 3px solid var(--line); padding-left: 10px; }
+.note.warn { border-color: var(--warn); } .note.bad { border-color: var(--bad); color: var(--fg); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+.tile .lab { font-size: 12px; color: var(--mut); text-transform: uppercase; letter-spacing: .06em; }
+.tile .val { font-family: var(--display); font-weight: 600; font-size: 36px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile .val small { font-size: 16px; color: var(--mut); font-weight: 500; margin-left: 3px; }
+.tile .sub { font-size: 12px; color: var(--mut); }
+.up { color: var(--ok); } .down { color: var(--warn); }
+
+.chart { min-height: 120px; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { fill: var(--mut); font-family: var(--body); font-size: 11px; }
+.chart text.v { fill: var(--fg); font-family: var(--display); font-size: 13px; font-weight: 600; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--mut); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+.empty { color: var(--mut); font-size: 13px; padding: 16px 0; }
+
+.zrows { display: flex; flex-direction: column; gap: 6px; }
+.zrow { display: grid; grid-template-columns: 120px 1fr 86px; gap: 8px; align-items: center; font-size: 13px; }
+.zrow .bar { height: 12px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.zrow .bar i { display: block; height: 100%; }
+.zrow .t { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut); }
+.zc { display: inline-block; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: 4px; font-family: var(--display); font-weight: 600; color: #111; margin-right: 6px; }
+.z1 { background: var(--z1); } .z2 { background: var(--z2); } .z3 { background: var(--z3); } .z4 { background: var(--z4); } .z5 { background: var(--z5); } .z6 { background: var(--z6); } .z7 { background: var(--z7); }
+
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; color: var(--mut); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.name { white-space: normal; min-width: 160px; }
+th.r, td.r { text-align: right; }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
+.badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); margin-left: 6px; white-space: nowrap; }
+.badge.virt { border-color: var(--c-virt); color: var(--c-virt); } .badge.indoor { border-color: var(--c-indoor); color: var(--c-indoor); } .badge.outdoor { border-color: var(--c-outdoor); color: var(--c-outdoor); }
+
+.wgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.wk { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.wk.sel { border-color: var(--acc); }
+.wk h4 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; letter-spacing: .02em; }
+.wk .meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--mut); }
+.wk .meta b { color: var(--fg); font-family: var(--display); font-size: 15px; font-weight: 600; }
+.wsvg { display: block; width: 100%; height: 64px; background: var(--bg); border-radius: 6px; }
+.ivl { display: flex; flex-direction: column; gap: 3px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ivl div { display: flex; gap: 8px; align-items: baseline; }
+.ivl .d { min-width: 48px; text-align: right; color: var(--mut); }
+
+.modal { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .65); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; }
+.modal .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 12px; }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.kv div span { display: block; font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .06em; }
+.kv div b { font-family: var(--display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip { position: fixed; z-index: 50; pointer-events: none; background: #0f1114; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; max-width: 260px; box-shadow: 0 6px 20px rgba(0, 0, 0, .5); }
+
+/* ---------- Consolle a tutto schermo ---------- */
+.cs { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto auto; gap: 8px; padding: 8px 10px 10px; height: 100%; overflow: hidden; }
+.cs-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--mut); min-height: 28px; }
+.cs-top b { color: var(--fg); font-family: var(--display); font-size: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-conn { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+.cs-main { display: grid; gap: 8px; min-height: 0; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1.25fr 1fr; grid-template-areas: 'tg pw' 'it it' 'hr zn'; }
+.cs-cell { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 0; min-width: 0; overflow: hidden; text-align: center; }
+.cs-cell label { font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .08em; }
+.cs-cell b { font-family: var(--display); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-size: clamp(40px, 11vh, 110px); }
+.cs-cell b small { font-size: .35em; color: var(--mut); font-weight: 500; margin-left: 4px; }
+.cs-cell .s { font-size: 13px; color: var(--mut); min-height: 18px; }
+.cs-tg { grid-area: tg; } .cs-tg b { color: var(--acc); }
+.cs-pw { grid-area: pw; } .cs-pw b.na { color: var(--mut); font-size: clamp(28px, 7vh, 64px); }
+.cs-it { grid-area: it; border-top: 4px solid var(--z1); } .cs-it b { font-size: clamp(64px, 17vh, 170px); }
+.cs-hr { grid-area: hr; } .cs-hr b { color: #ff5d73; } .cs-hr b.na { color: var(--mut); font-size: clamp(28px, 7vh, 64px); }
+.cs-zn { grid-area: zn; gap: 6px; }
+.zpair { display: flex; gap: 10px; align-items: stretch; justify-content: center; width: 100%; }
+.zbox { flex: 1; max-width: 150px; border-radius: 8px; padding: 4px; background: var(--bg); border: 1px solid var(--line); }
+.zbox span { display: block; font-size: 10px; color: var(--mut); text-transform: uppercase; letter-spacing: .06em; }
+.zbox b { font-size: clamp(26px, 6vh, 56px); display: block; border-radius: 6px; color: #111; }
+.zbox b.na { color: var(--mut); background: transparent; }
+.cs-prog .bar { height: 10px; background: var(--panel2); border-radius: 5px; overflow: hidden; }
+.cs-prog .bar i { display: block; height: 100%; width: 0; background: var(--acc); }
+.cs-prog .r { display: flex; justify-content: space-between; align-items: baseline; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--mut); margin-top: 3px; }
+.cs-prog .r b { color: var(--fg); font-family: var(--display); font-size: 22px; }
+.cs-chart { position: relative; height: clamp(44px, 11vh, 110px); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.cs-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cs-done { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, .45); }
+.cs-cur { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px #000, 0 0 10px #fff; }
+.cs-next { font-size: 14px; color: var(--mut); text-align: center; min-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-next b { color: var(--fg); }
+.cs-ctl { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; }
+.cs-ctl .btn { min-height: 56px; font-size: 18px; font-family: var(--display); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.cs-msg { color: var(--warn); font-size: 13px; text-align: center; }
+.cs-confirm { position: absolute; inset: 0; background: rgba(0, 0, 0, .78); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 3; }
+.cs-confirm .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.cs-confirm .btn { min-height: 52px; }
+.cs.paused .cs-it b { color: var(--warn); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .cs { grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-columns: minmax(0, 1fr) 170px; column-gap: 8px; }
+  .cs-top { grid-column: 1 / -1; }
+  .cs-main { grid-template-columns: 1fr 1.3fr 1fr; grid-template-rows: 1fr 1fr; grid-template-areas: 'tg it hr' 'pw it zn'; }
+  .cs-prog { grid-column: 1; }
+  .cs-chart { grid-column: 1; height: clamp(36px, 14vh, 70px); }
+  .cs-next { display: none; }
+  .cs-ctl { grid-column: 2; grid-row: 2 / 5; grid-template-columns: 1fr; grid-template-rows: 2fr 1fr auto; }
+  .cs-cell { padding: 3px 8px; }
+  .cs-cell label { font-size: 10px; }
+  .cs-cell .s { font-size: 11px; min-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .cs-cell b { font-size: clamp(26px, 13vh, 72px); }
+  .cs-pw b.na, .cs-hr b.na { font-size: clamp(20px, 9vh, 44px); }
+  .cs-it b { font-size: clamp(48px, 26vh, 130px); }
+  .cs-zn { gap: 3px; }
+  .zbox { padding: 2px 4px; }
+  .zbox b { font-size: clamp(18px, 8vh, 38px); }
+  .cs-msg { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cs-prog .bar i, .cs-cur, .cs-done { transition: all .25s linear; }
+}
+
+.why { font-size: 14px; color: var(--fg); border-left: 3px solid var(--acc); padding-left: 10px; }
+.ex { display: flex; flex-direction: column; gap: 10px; background: var(--bg); border-radius: 8px; padding: 10px; }
+.exb { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.exl { font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .06em; }
+pre.note-s { margin: 0; white-space: pre-wrap; font-family: var(--body); font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; user-select: text; }
+details summary { cursor: pointer; }
+.sa .brand::after { content: ' · consolle'; font-size: .6em; color: var(--mut); letter-spacing: .05em; }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">WATT</div>
+    <nav class="tabs" aria-label="Sezioni">
+      <a href="#allenamenti">Allenamenti</a>
+      <a href="#consolle">Consolle</a>
+      <a href="#impostazioni">Impostazioni</a>
+    </nav>
+  </header>
+  <main id="view"></main>
+</div>
+<div id="console" class="cs" hidden></div>
+<div id="modal" class="modal" hidden></div>
+<div id="tip" class="tip" hidden></div>
+<script>window.WATT_STANDALONE = true; window.WATT_SEED = {"ftp":190,"ftpHist":[{"date":"2026-11-14","ftp":190,"src":"strava"}],"hrz":[125,146,167,187],"hrSrc":"strava","restHr":50,"lthr":null,"mode":"rivo","voice":true,"erg":true,"plan":[]};</script>
+<script>
+/* WATT core: motore workout, metriche, parser dispositivi. Nessun accesso a DOM o rete. */
+(function (root) {
+  'use strict';
+  const W = {};
+
+  /* ---------- Zone di potenza (Coggan, frazione di FTP) ---------- */
+  W.PZ = [
+    { z: 1, name: 'Recupero', hi: 0.55 },
+    { z: 2, name: 'Endurance', hi: 0.75 },
+    { z: 3, name: 'Tempo', hi: 0.90 },
+    { z: 4, name: 'Soglia', hi: 1.05 },
+    { z: 5, name: 'VO₂max', hi: 1.20 },
+    { z: 6, name: 'Anaerobico', hi: 1.50 },
+    { z: 7, name: 'Neuromuscolare', hi: Infinity }
+  ];
+  W.zoneOfFrac = function (f) {
+    for (const z of W.PZ) if (f <= z.hi + 1e-9) return z.z;
+    return 7;
+  };
+  W.zoneOfWatts = function (w, ftp) {
+    if (w == null || !isFinite(w) || !ftp) return null;
+    return W.zoneOfFrac(w / ftp);
+  };
+  /* zone cardiache: array di 5 limiti superiori [z1max, z2max, z3max, z4max] (z5 aperta) */
+  W.zoneOfHr = function (bpm, maxes) {
+    if (bpm == null || !isFinite(bpm) || !maxes || maxes.length < 4) return null;
+    for (let i = 0; i < 4; i++) if (bpm <= maxes[i]) return i + 1;
+    return 5;
+  };
+  W.targetWatts = function (ftp, frac) {
+    return ftp ? Math.round(ftp * frac) : null;
+  };
+
+  /* ---------- Workout: DSL -> blocchi {d: secondi, p: frazione FTP, k: tipo} ---------- */
+  function ramp(kind, minutes) {
+    const steps = kind === 'wu' ? Math.min(5, minutes) : Math.min(4, minutes);
+    const d = (minutes * 60) / steps;
+    const from = kind === 'wu' ? 0.45 : 0.60, to = kind === 'wu' ? 0.75 : 0.40;
+    const out = [];
+    for (let j = 0; j < steps; j++) {
+      const p = steps === 1 ? (from + to) / 2 : from + ((to - from) * j) / (steps - 1);
+      out.push({ d: d, p: Math.round(p * 100) / 100, k: kind });
+    }
+    return out;
+  }
+  W.parseDsl = function (s) {
+    let i = 0;
+    function item() {
+      const rest = s.slice(i);
+      let m = /^(\d+)x\(/.exec(rest);
+      if (m) {
+        i += m[0].length;
+        const inner = seq(')');
+        if (s[i] !== ')') throw new Error('DSL: parentesi non chiusa in ' + s);
+        i++;
+        const r = [];
+        for (let k = 0; k < +m[1]; k++) inner.forEach(b => r.push({ d: b.d, p: b.p, k: b.k }));
+        return r;
+      }
+      m = /^(wu|cd)(\d+)/.exec(rest);
+      if (m) { i += m[0].length; return ramp(m[1], +m[2]); }
+      m = /^(\d+(?:\.\d+)?)@(\d+)/.exec(rest);
+      if (m) { i += m[0].length; return [{ d: Math.round(+m[1] * 60), p: +m[2] / 100, k: 'w' }]; }
+      throw new Error('DSL: non riconosciuto "' + rest + '"');
+    }
+    function seq(end) {
+      const items = [];
+      while (i < s.length && s[i] !== end) {
+        item().forEach(b => items.push(b));
+        if (s[i] === ',' || s[i] === ';') i++;
+      }
+      return items;
+    }
+    const out = seq(undefined);
+    if (i !== s.length) throw new Error('DSL: resto non letto in ' + s);
+    return out;
+  };
+
+  W.GOALS = [
+    { id: 'rec', name: 'Recupero' },
+    { id: 'end', name: 'Endurance' },
+    { id: 'tmp', name: 'Tempo' },
+    { id: 'ss', name: 'Sweet spot' },
+    { id: 'thr', name: 'Soglia' },
+    { id: 'vo2', name: 'VO₂max' }
+  ];
+
+  /* goal, nome, descrizione, durata (min), sequenza, perché, come eseguirlo.
+     Ogni variante è scritta per la sua durata, non scalata. */
+  const SRC = [
+    ['rec', 'Scarico facile', 'Pedalata sciolta e continua, senza alcuno sforzo.', 40, 'wu5;30@50;cd5',
+      'Muove le gambe e aumenta il flusso di sangue nei muscoli senza aggiungere carico. Lo stimolo è così basso che il giorno dopo sei più fresco, non più stanco.',
+      'Cadenza libera 85–95 rpm, respiro dal naso. Se la FC esce dalla Z1 abbassa: qui fare di più non serve a niente.'],
+    ['rec', 'Sblocco gambe', 'Sei brevi richiami leggeri per riattivare le gambe.', 40, 'wu8;6x(1@60,3@48);cd8',
+      'I richiami da 1 minuto riattivano il reclutamento muscolare dopo giorni fermi, viaggi o una gara, senza accumulare fatica.',
+      'Nei richiami alza la cadenza a 95–100 rpm invece di spingere più forte. Tra un richiamo e l’altro pedala sciolto.'],
+    ['rec', 'Recupero a onde', 'Blocchi facili alternati a tratti ancora più leggeri.', 40, 'wu6;4x(5@52,2@45);cd6',
+      'Alterna due livelli entrambi in Z1: utile quando il recupero continuo annoia. Lo stimolo resta sotto la Z2, quindi non intacca il recupero.',
+      'Le onde sono quasi impercettibili: usale per cambiare cadenza e posizione, non per spingere.'],
+    ['rec', 'Scarico lungo', 'Un’ora in Z1 costante dopo giornate dure.', 60, 'wu8;44@52;cd8',
+      'Un’ora in Z1 tiene alta la circolazione più a lungo: indicato il giorno dopo una gara o un blocco di carichi alti.',
+      'FC sempre in Z1, idratazione normale. Se dopo 20 minuti le gambe sono ancora pesanti, resta al 45–50%.'],
+    ['rec', 'Sblocco esteso', 'Dieci richiami da un minuto, tutto il resto facile.', 60, 'wu10;10x(1@60,3@48);cd10',
+      'Dieci richiami brevi tengono vivo il reclutamento neuromuscolare in una seduta che resta di recupero: utile prima di una giornata di qualità.',
+      'Richiami a cadenza alta e senza trattenere il respiro. Nei tratti facili rilassa spalle e mani.'],
+    ['rec', 'Onde lente', 'Quattro blocchi da 8 minuti appena sotto la Z2.', 60, 'wu8;4x(8@54,3@46);cd8',
+      'Blocchi al limite alto della Z1: recupero attivo con un po’ più di volume, adatto alle settimane di scarico.',
+      'Il 54% deve sembrare facilissimo. Se non lo è sei più stanco del previsto: resta al 46% per tutta la seduta.'],
+    ['rec', 'Recupero attivo lungo', 'Novanta minuti di circolazione, cadenza libera.', 90, 'wu10;70@52;cd10',
+      'Volume aerobico minimo con fatica quasi nulla: per le settimane di scarico in cui vuoi comunque muoverti a lungo.',
+      'Cadenza libera, va bene anche davanti a un film. FC sempre in Z1; ogni 15 minuti alzati 20 secondi sui pedali.'],
+    ['rec', 'Recupero a blocchi', 'Sette blocchi facili con pause leggerissime.', 90, 'wu10;7x(8@55,2@46);cd10',
+      'Come il recupero lungo ma spezzato: i blocchi al 55% sono al confine con la Z2 e danno un minimo stimolo aerobico senza costare fatica.',
+      'Nei blocchi resta seduto e rilassato; usa le pause al 46% per sciogliere schiena e collo.'],
+
+    ['end', 'Fondo breve', 'Z2 continua: la base aerobica in formato corto.', 40, 'wu6;28@68;cd6',
+      'La Z2 stimola le fibre lente, i mitocondri e la capacità di usare i grassi. Anche mezz’ora, se ripetuta spesso, costruisce base.',
+      'Cadenza 85–95 rpm, devi poter parlare a frasi intere. La FC tende a salire nel tempo a parità di watt: è la deriva cardiaca, è normale.'],
+    ['end', 'Fondo progressivo 40', 'Tre gradini crescenti dentro la Z2.', 40, 'wu6;10@62;10@68;8@74;cd6',
+      'Salire per gradini dentro la Z2 allena la stessa base ma chiude con 8 minuti al limite alto, dove lo stimolo aerobico è maggiore.',
+      'Ogni gradino deve sembrare solo un po’ più impegnativo del precedente; l’ultimo resta comunque conversazionale.'],
+    ['end', 'Fondo con allunghi', 'Z2 con quattro allunghi da un minuto in Z3 alta.', 40, 'wu8;4x(5@68,1@90);cd8',
+      'Gli allunghi al 90% reclutano più fibre e spezzano la monotonia, senza trasformare la seduta in un lavoro di qualità.',
+      'Allunghi da seduto a 95+ rpm, poi torna subito in Z2 senza fermarti.'],
+    ['end', 'Fondo medio', 'Quarantaquattro minuti filati in Z2.', 60, 'wu8;44@68;cd8',
+      'Il formato base dell’endurance: un’ora con 44 minuti continui in Z2 è il mattone della resistenza aerobica.',
+      'Costanza prima di tutto. Se negli ultimi 15 minuti la FC esce dalla Z2, abbassa di 5–10 W.'],
+    ['end', 'Fondo progressivo 60', 'Tre gradini da un quarto d’ora circa.', 60, 'wu8;15@62;15@68;14@74;cd8',
+      'Tre gradini lunghi portano lo stimolo aerobico verso il limite alto della Z2 quando sei già un po’ stanco: più efficace del fondo piatto a parità di durata.',
+      'Il primo gradino deve sembrare troppo facile: è giusto così. Respiro sempre controllato.'],
+    ['end', 'Fondo ondulato', 'Z2 con cinque rilanci da due minuti in Z3.', 60, 'wu10;5x(6@65,2@78);cd10',
+      'I rilanci in Z3 abituano a cambiare ritmo dentro un lavoro aerobico, come su una strada mossa, senza uscire dal lavoro di base.',
+      'Nei rilanci aumenta la cadenza prima dei watt. Rientra in Z2 entro 30 secondi.'],
+    ['end', 'Fondo lungo', 'Settanta minuti costanti: resistenza aerobica.', 90, 'wu10;70@67;cd10',
+      'Più è lungo il tempo continuo in Z2, più forte è lo stimolo su capillari e mitocondri. È la seduta di base più efficace sul rullo.',
+      'Acqua e 30–60 g di carboidrati all’ora. Alzati sui pedali 20 secondi ogni 10 minuti per il soprasella.'],
+    ['end', 'Fondo progressivo 90', 'Tre lunghi gradini fino al limite alto della Z2.', 90, 'wu10;25@62;25@68;20@74;cd10',
+      'Un’ora e mezza che finisce con 20 minuti al 74%: allena la resistenza alla fatica, cioè tenere i watt quando le riserve calano.',
+      'Mangia dal minuto 30. Se nell’ultimo gradino la FC passa in Z3, resta al 68%.'],
+    ['end', 'Fondo a onde lungo', 'Sette onde: otto minuti in Z2 e due al confine con la Z3.', 90, 'wu10;7x(8@66,2@76);cd10',
+      'Base aerobica lunga con piccoli rilanci regolari che tengono attenta la testa e reclutano più fibre nella seconda parte.',
+      'Le onde al 76% sono ancora aerobiche: non devono mai togliere il fiato.'],
+
+    ['tmp', 'Tempo 2×10', 'Due blocchi da 10 minuti in Z3.', 40, 'wu8;2x(10@82,3@55);cd6',
+      'La Z3 sviluppa la resistenza a intensità media e l’economia di pedalata sotto sforzo prolungato. Due blocchi corti sono il modo per introdurla.',
+      'Respiro profondo ma regolare, parli a frasi brevi. Cadenza 85–95 rpm.'],
+    ['tmp', 'Tempo continuo 20', 'Venti minuti filati al ritmo medio.', 40, 'wu10;20@80;cd10',
+      'Venti minuti senza pause allenano a tenere un ritmo medio con costanza, anche mentalmente.',
+      'Fissa la cadenza e non guardare il tempo che resta. Se la FC sale troppo, abbassa di 5 W invece di fermarti.'],
+    ['tmp', 'Tempo a scalare', 'Blocchi più corti e più intensi: 8, 7 e 6 minuti.', 40, 'wu8;8@78;2@55;7@82;2@55;6@86;cd7',
+      'La durata scende mentre l’intensità sale: l’ultimo blocco arriva vicino allo sweet spot proprio quando sei più stanco.',
+      'Parti tranquillo nel primo blocco: deve restare margine per l’ultimo.'],
+    ['tmp', 'Tempo 3×12', 'Tre blocchi da 12 minuti con recupero breve.', 60, 'wu10;3x(12@82,3@55);cd5',
+      'Trentasei minuti di Z3 con recuperi brevi: più tempo di lavoro rispetto al formato da 40, fatica ancora gestibile.',
+      'Recuperi brevi apposta: non scendere sotto il 55% e non smettere di pedalare.'],
+    ['tmp', 'Tempo 2×18', 'Due blocchi lunghi a ritmo medio.', 60, 'wu8;2x(18@80,4@55);cd8',
+      'Blocchi lunghi all’80% allenano la resistenza muscolare a intensità medio-alta: utile per salite lunghe e uscite in gruppo.',
+      'Bevi nel recupero. Nel secondo blocco la FC sarà più alta a parità di watt: è previsto.'],
+    ['tmp', 'Tempo continuo 36', 'Un solo blocco lungo a Z3 bassa.', 60, 'wu12;36@78;cd12',
+      'Un unico blocco lungo in Z3 bassa: grande volume aerobico di qualità con un costo di recupero moderato.',
+      'Tieni i watt stabili, non rincorrere i numeri. Ogni 10 minuti cambia per 20 secondi posizione delle mani.'],
+    ['tmp', 'Tempo 3×20', 'Un’ora complessiva di Z3 in tre blocchi.', 90, 'wu12;3x(20@80,4@55);cd6',
+      'Un’ora di Z3 in tre blocchi: resistenza a ritmo sostenuto per lunghe salite e giornate in montagna.',
+      'Carboidrati dal primo recupero (60 g/h). Il terzo blocco è il vero allenamento.'],
+    ['tmp', 'Tempo 4×14', 'Quattro blocchi a Z3 centrale.', 90, 'wu10;4x(14@83,4@55);cd8',
+      'Quattro blocchi all’83% spingono la Z3 verso l’alto: più vicini allo sweet spot ma con recuperi frequenti.',
+      'Se l’ultimo blocco non regge, chiudilo all’80%: meglio finire che saltarlo.'],
+    ['tmp', 'Tempo lungo 60', 'Sessanta minuti continui a Z3 bassa.', 90, 'wu15;60@77;cd15',
+      'Un’ora continua a ritmo medio: la seduta più specifica per la tenuta su sforzi lunghi e costanti.',
+      'Mangia e bevi senza fermarti. Concentrati su una pedalata rotonda a 85–90 rpm.'],
+
+    ['ss', 'Sweet spot 2×10', 'Due blocchi al 90% della FTP.', 40, 'wu8;2x(10@90,3@55);cd6',
+      'Tra l’88 e il 94% della FTP lo stimolo sulla soglia è quasi pieno ma la fatica è più bassa: è il modo più efficiente per alzare la FTP con poco tempo.',
+      'Respiro impegnato, parli a poche parole. Che negli ultimi minuti la FC salga verso la Z4 è normale.'],
+    ['ss', 'Sweet spot 3×6', 'Tre blocchi brevi al 92%.', 40, 'wu8;3x(6@92,2@55);cd8',
+      'Blocchi brevi al 92%: stessa zona, meno tempo continuo. Per i rientri o le giornate con poche energie.',
+      'Partenza di ogni blocco controllata: i primi 30 secondi non devono superare il target.'],
+    ['ss', 'Sweet spot 1×18', 'Un blocco unico all’88%.', 40, 'wu10;18@88;cd12',
+      'Un blocco unico all’88% allena la tenuta fisica e mentale senza pause, a un’intensità ancora sostenibile.',
+      'Dividilo mentalmente in tre parti da 6 minuti. Cadenza 85–95 rpm.'],
+    ['ss', 'Sweet spot 3×12', 'Trentasei minuti di qualità al 90%.', 60, 'wu10;3x(12@90,3@55);cd5',
+      'Trentasei minuti al 90%: la dose classica per far crescere la FTP senza svuotarti per i giorni dopo.',
+      'Nel terzo blocco cresce la tentazione di mollare: tieni la cadenza costante e i watt arrivano.'],
+    ['ss', 'Sweet spot 2×18', 'Due blocchi lunghi all’89%.', 60, 'wu8;2x(18@89,4@55);cd8',
+      'Blocchi lunghi all’89% allenano a sostenere a lungo un’intensità vicina alla soglia: più specifico del 3×12 per salite lunghe.',
+      'Bevi nel recupero. Respirazione profonda e regolare, spalle basse.'],
+    ['ss', 'Sweet spot 4×8', 'Quattro blocchi al 93%, recupero di tre minuti.', 60, 'wu10;4x(8@93,3@55);cd6',
+      'Il 93% è il limite alto dello sweet spot: più vicino alla soglia, in blocchi più corti per restare in controllo.',
+      'Se l’ultimo blocco è troppo duro scendi al 90%, non interromperlo.'],
+    ['ss', 'Sweet spot 3×20', 'Il classico: un’ora all’89% in tre blocchi.', 90, 'wu12;3x(20@89,4@55);cd6',
+      'Un’ora complessiva all’89%: lo stimolo più forte sulla FTP che si possa ripetere ogni settimana senza crollare.',
+      'Carboidrati 60–80 g/h, ventilatore acceso. Il terzo blocco è quello che allena.'],
+    ['ss', 'Sweet spot 4×14', 'Quattro blocchi al 91%.', 90, 'wu10;4x(14@91,4@55);cd8',
+      'Cinquantasei minuti al 91% in quattro blocchi: molto volume vicino alla soglia, con recuperi regolari.',
+      'Mangia in ogni recupero. Se la FC nel quarto blocco va in Z5 scendi all’88%.'],
+    ['ss', 'Sweet spot 2×30', 'Due blocchi da mezz’ora all’88%.', 90, 'wu10;2x(30@88,5@55);cd10',
+      'Due blocchi da 30 minuti: la seduta più specifica per la resistenza vicino alla soglia, come in una lunga salita a ritmo.',
+      'Dividi ogni blocco in tre parti da 10 minuti. Bevi senza smettere di pedalare.'],
+
+    ['thr', 'Soglia 3×6', 'Tre blocchi alla FTP.', 40, 'wu8;3x(6@100,3@50);cd5',
+      'Alla FTP alzi la potenza che riesci a sostenere prima che il lattato si accumuli. Tre blocchi da 6 minuti sono la dose d’ingresso.',
+      'Duro ma controllato: ogni blocco deve finire con la sensazione di poter andare avanti ancora 1–2 minuti.'],
+    ['thr', 'Soglia 2×8', 'Due blocchi appena sotto soglia.', 40, 'wu10;2x(8@98,4@50);cd6',
+      'Il 98% su 8 minuti allena la soglia con un margine di sicurezza: adatto se la FTP è appena stata aggiornata.',
+      'Cadenza 88–95 rpm. Recupera davvero al 50%: serve per arrivare fresco al secondo blocco.'],
+    ['thr', 'Soglia 4×4', 'Quattro blocchi brevi al 102%.', 40, 'wu10;4x(4@102,2@50);cd6',
+      'Blocchi brevi appena sopra soglia: alzano la tolleranza al lattato e preparano a lavori di soglia più lunghi.',
+      'Non partire forte: i primi 30 secondi esattamente al target.'],
+    ['thr', 'Soglia 3×10', 'Trenta minuti al 98% in tre blocchi.', 60, 'wu12;3x(10@98,4@50);cd6',
+      'Trenta minuti vicino alla FTP: lo stimolo principale per spostarla in alto.',
+      'Il secondo blocco è il più difficile mentalmente. Bevi in ogni recupero.'],
+    ['thr', 'Soglia 2×15', 'Due blocchi lunghi al 97%.', 60, 'wu12;2x(15@97,5@50);cd8',
+      'Blocchi da 15 minuti al 97%: allenano a sostenere a lungo la soglia, il passo da cronometro o da salita lunga.',
+      'Posizione stabile, respiro ritmico. Se crolli negli ultimi 3 minuti, la FTP impostata è troppo alta.'],
+    ['thr', 'Soglia 5×6', 'Cinque blocchi alla FTP con recupero di tre minuti.', 60, 'wu10;5x(6@100,3@50);cd5',
+      'Trenta minuti esattamente alla FTP spezzati in cinque blocchi: tanta qualità con recuperi frequenti.',
+      'Tieni lo stesso target in tutti e cinque: niente sprint finale nell’ultimo.'],
+    ['thr', 'Sopra/sotto 3×9', 'Un minuto al 105% e due al 90%, tre volte per blocco.', 60, 'wu12;3x(3x(1@105,2@90),4@50);cd9',
+      'Alternare 105% e 90% insegna a smaltire il lattato prodotto sopra soglia mentre continui a spingere: utile per salite irregolari e cambi di ritmo.',
+      'Nei minuti al 90% non mollare: è lì che avviene lo smaltimento. Cadenza 90+ nei tratti al 105%.'],
+    ['thr', 'Soglia 3×15', 'Quarantacinque minuti al 97%.', 90, 'wu15;3x(15@97,5@50);cd15',
+      'Quarantacinque minuti al 97%: seduta di soglia lunga per chi ha già una buona base, da fare con gambe fresche.',
+      'Carboidrati 60 g/h e ventilatore. Ogni blocco uguale al precedente, niente partenze aggressive.'],
+    ['thr', 'Soglia 4×12', 'Quattro blocchi al 98%.', 90, 'wu12;4x(12@98,4@50);cd14',
+      'Quattro blocchi da 12 minuti: tanto lavoro alla soglia con recuperi regolari. Seduta impegnativa, prevedi un giorno facile dopo.',
+      'Se dopo il terzo blocco la FC non scende in recupero, fermati: hai già ottenuto lo stimolo.'],
+    ['thr', 'Sopra/sotto 4×12', 'Due minuti al 105% e due al 90%, tre volte per blocco.', 90, 'wu12;4x(3x(2@105,2@90),4@50);cd14',
+      'Versione lunga del sopra/sotto: tratti di 2 minuti sopra soglia accumulano più lattato da gestire nei minuti al 90%.',
+      'Mangia nei recuperi lunghi. Se nel quarto blocco non tieni il 105%, fallo al 100%.'],
+
+    ['vo2', 'VO₂max 4×3', 'Quattro ripetute da tre minuti al 112%.', 40, 'wu9;4x(3@112,3@50);cd7',
+      'Tra il 106 e il 120% il cuore lavora vicino al suo massimo: si allena il tetto aerobico (VO₂max). Tre minuti bastano perché il consumo di ossigeno arrivi vicino al picco.',
+      'Le prime ripetute sembrano facili: non partire più forte. Recupero vero al 50%, cadenza alta.'],
+    ['vo2', '30/30 due serie', 'Due serie da otto 30/30 al 120%.', 40, 'wu10;8x(0.5@120,0.5@50);4@50;8x(0.5@120,0.5@50);cd10',
+      'Trenta secondi forti e trenta facili tengono il consumo di ossigeno alto a lungo con meno lattato: si accumula più tempo vicino al VO₂max che con ripetute continue.',
+      'Cadenza 100+ nei 30 secondi forti; in quelli facili continua a pedalare. In ERG il rullo cambia carico da solo: resta seduto.'],
+    ['vo2', 'VO₂max 6×2', 'Sei ripetute da due minuti al 115%.', 40, 'wu10;6x(2@115,2@50);cd6',
+      'Ripetute corte e intense: alzano il VO₂max e la capacità di rispondere ad attacchi e strappi.',
+      'Ogni ripetuta uguale alle altre. Se l’ultima non regge, il target è troppo alto: scendi al 110%.'],
+    ['vo2', 'VO₂max 5×4', 'Cinque ripetute da quattro minuti al 110%.', 60, 'wu12;5x(4@110,4@50);cd8',
+      'Il formato più studiato per il VO₂max: ripetute da 4 minuti con recupero uguale. Venti minuti totali vicino al massimo.',
+      'La FC sale in ogni ripetuta e arriva vicino al massimo solo alla fine: non serve forzare all’inizio.'],
+    ['vo2', 'VO₂max 6×3', 'Sei ripetute da tre minuti al 113%.', 60, 'wu12;6x(3@113,3@50);cd12',
+      'Diciotto minuti al 113%: lavoro intenso sul tetto aerobico con recuperi completi.',
+      'Respiro molto profondo, mani rilassate sul manubrio. Bevi in ogni recupero.'],
+    ['vo2', '30/30 tre serie', 'Tre serie da dieci 30/30 al 120%.', 60, 'wu12;10x(0.5@120,0.5@50);5@50;10x(0.5@120,0.5@50);5@50;10x(0.5@120,0.5@50);cd8',
+      'Trenta minuti di 30/30: tanto tempo ad alto consumo di ossigeno con una fatica più gestibile delle ripetute lunghe.',
+      'La terza serie è la più dura: mantieni la cadenza alta e lascia lavorare il rullo.'],
+    ['vo2', 'VO₂max 6×5', 'Sei ripetute lunghe da cinque minuti al 108%.', 90, 'wu15;6x(5@108,5@50);cd15',
+      'Ripetute lunghe al limite basso del VO₂max: trenta minuti di lavoro intenso che alzano anche la tenuta sopra soglia.',
+      'Seduta molto dura: falla solo con gambe fresche. Carboidrati prima e durante.'],
+    ['vo2', 'VO₂max 8×4', 'Otto ripetute da quattro minuti al 110%.', 90, 'wu14;8x(4@110,4@50);cd12',
+      'Otto ripetute da 4 minuti: il volume massimo di lavoro al VO₂max in una seduta. Da usare raramente, nei blocchi specifici.',
+      'Se al sesto la potenza cala più del 5%, fermati lì: lo stimolo l’hai già avuto.'],
+    ['vo2', 'VO₂max più fondo', 'Cinque ripetute al 112%, poi 26 minuti di Z2.', 90, 'wu12;5x(4@112,4@50);26@68;cd12',
+      'Le ripetute a inizio seduta trovano le gambe fresche; il fondo dopo aggiunge volume aerobico quando le fibre lente sono già affaticate.',
+      'Nel fondo finale resta in Z2 anche se ti senti bene: è volume, non qualità.']
+  ];
+
+  W.total = function (blocks) { let t = 0; for (const b of blocks) t += b.d; return t; };
+
+  W.LIB = SRC.map(function (r, idx) {
+    const blocks = W.parseDsl(r[4]);
+    return { id: r[0] + '-' + r[3] + '-' + idx, goal: r[0], name: r[1], desc: r[2], dur: r[3], blocks: blocks, why: r[5], how: r[6] };
+  });
+
+  /* Stima dai soli target (non è un dato misurato): IF = radice quarta della media di p^4 pesata sul tempo. */
+  W.planStats = function (blocks) {
+    const T = W.total(blocks);
+    let s4 = 0, s1 = 0;
+    for (const b of blocks) { s4 += Math.pow(b.p, 4) * b.d; s1 += b.p * b.d; }
+    const IF = Math.pow(s4 / T, 0.25);
+    return { sec: T, avg: s1 / T, IF: IF, tss: (T * IF * IF) / 36 };
+  };
+
+  W.blockLabel = function (b) {
+    if (b.k === 'wu') return 'Riscaldamento';
+    if (b.k === 'cd') return 'Defaticamento';
+    return W.PZ[W.zoneOfFrac(b.p) - 1].name;
+  };
+
+  /* posizione nel workout a partire dai secondi trascorsi */
+  W.locate = function (blocks, sec) {
+    const T = W.total(blocks);
+    if (sec >= T) return { done: true, idx: blocks.length - 1, into: blocks[blocks.length - 1].d, left: 0, total: T };
+    let acc = 0;
+    for (let i = 0; i < blocks.length; i++) {
+      if (sec < acc + blocks[i].d) return { done: false, idx: i, into: sec - acc, left: acc + blocks[i].d - sec, total: T };
+      acc += blocks[i].d;
+    }
+    return { done: true, idx: blocks.length - 1, into: 0, left: 0, total: T };
+  };
+
+  /* ---------- Timer basato sull'orologio, non su un contatore ---------- */
+  W.Timer = function (nowFn) {
+    this.now = nowFn || function () { return Date.now(); };
+    this.startAt = null; this.pausedAt = null; this.pausedMs = 0; this.endAt = null;
+  };
+  W.Timer.prototype.start = function () { this.startAt = this.now(); this.pausedAt = null; this.pausedMs = 0; this.endAt = null; };
+  W.Timer.prototype.pause = function (at) { if (this.startAt != null && this.pausedAt == null && this.endAt == null) this.pausedAt = at != null ? at : this.now(); };
+  W.Timer.prototype.resume = function () { if (this.pausedAt != null) { this.pausedMs += this.now() - this.pausedAt; this.pausedAt = null; } };
+  W.Timer.prototype.stop = function () { if (this.endAt == null) this.endAt = this.pausedAt != null ? this.pausedAt : this.now(); };
+  W.Timer.prototype.running = function () { return this.startAt != null && this.pausedAt == null && this.endAt == null; };
+  W.Timer.prototype.elapsedMs = function () {
+    if (this.startAt == null) return 0;
+    const t = this.endAt != null ? this.endAt : (this.pausedAt != null ? this.pausedAt : this.now());
+    return Math.max(0, t - this.startAt - this.pausedMs);
+  };
+  W.Timer.prototype.toJSON = function () { return { startAt: this.startAt, pausedAt: this.pausedAt, pausedMs: this.pausedMs, endAt: this.endAt }; };
+  W.Timer.fromJSON = function (o, nowFn) { const t = new W.Timer(nowFn); t.startAt = o.startAt; t.pausedAt = o.pausedAt; t.pausedMs = o.pausedMs || 0; t.endAt = o.endAt; return t; };
+
+  /* ---------- Metriche dalle serie temporali ---------- */
+  W.DURS = [5, 15, 30, 60, 300, 600, 1200, 3600];
+  W.MIN_COVERAGE = 0.95;
+
+  /* Porta una serie (time[], values[]) su una griglia a 1 s. Un campione vale fino al successivo
+     solo se questo arriva entro maxHold secondi; oltre, i secondi restano mancanti (NaN). */
+  W.grid = function (time, values, maxHold) {
+    maxHold = maxHold || 5;
+    const n = time ? time.length : 0;
+    if (!n || !values) return [];
+    const t0 = time[0];
+    const T = Math.round(time[n - 1] - t0) + 1;
+    const g = new Array(T).fill(NaN);
+    for (let i = 0; i < n; i++) {
+      const v = values[i];
+      if (v == null || !isFinite(v)) continue;
+      const a = Math.round(time[i] - t0);
+      let span = i < n - 1 ? Math.round(time[i + 1] - time[i]) : 1;
+      if (span > maxHold || span < 1) span = 1;
+      for (let s = a; s < a + span && s < T; s++) g[s] = v;
+    }
+    return g;
+  };
+
+  /* Massima media su una finestra di d secondi di tempo reale. La finestra conta solo se
+     almeno minCov dei suoi secondi ha un campione; la media è sui campioni presenti. */
+  W.maxMean = function (g, d, minCov) {
+    minCov = minCov == null ? W.MIN_COVERAGE : minCov;
+    if (g.length < d) return null;
+    let sum = 0, cnt = 0, best = null;
+    const need = Math.ceil(d * minCov);
+    for (let i = 0; i < g.length; i++) {
+      if (!isNaN(g[i])) { sum += g[i]; cnt++; }
+      if (i >= d && !isNaN(g[i - d])) { sum -= g[i - d]; cnt--; }
+      if (i >= d - 1 && cnt >= need) {
+        const m = sum / cnt;
+        if (best == null || m > best) best = m;
+      }
+    }
+    return best;
+  };
+
+  /* Normalized Power: media mobile a 30 s (finestre con almeno 27 campioni), elevata alla quarta,
+     media, radice quarta. Restituita solo con almeno 20 minuti di finestre valide. */
+  W.normalizedPower = function (g) {
+    const d = 30, need = 27;
+    let sum = 0, cnt = 0, s4 = 0, n = 0;
+    for (let i = 0; i < g.length; i++) {
+      if (!isNaN(g[i])) { sum += g[i]; cnt++; }
+      if (i >= d && !isNaN(g[i - d])) { sum -= g[i - d]; cnt--; }
+      if (i >= d - 1 && cnt >= need) { s4 += Math.pow(sum / cnt, 4); n++; }
+    }
+    if (n < 1200) return null;
+    return Math.pow(s4 / n, 0.25);
+  };
+
+  function stats(g) {
+    let s = 0, n = 0, mx = null;
+    for (const v of g) if (!isNaN(v)) { s += v; n++; if (mx == null || v > mx) mx = v; }
+    return { n: n, avg: n ? s / n : null, max: mx };
+  }
+  function hist(g, bin, lo, nb) {
+    const h = new Array(nb).fill(0);
+    for (const v of g) if (!isNaN(v)) { let k = Math.floor((v - lo) / bin); if (k < 0) k = 0; if (k >= nb) k = nb - 1; h[k]++; }
+    while (h.length && h[h.length - 1] === 0) h.pop();
+    return h;
+  }
+  W.PBIN = 10; W.HBIN = 5; W.HLO = 40;
+
+  /* Analisi di una attività o sessione. Non dipende dall'FTP: zone, IF e TSS si derivano dopo. */
+  W.analyze = function (st) {
+    const out = { v: 2, hasPower: false, hasHr: false };
+    if (!st || !st.time || !st.time.length) return out;
+    const T = Math.round(st.time[st.time.length - 1] - st.time[0]) + 1;
+    out.dur = T;
+    if (st.watts) {
+      const g = W.grid(st.time, st.watts);
+      const s = stats(g);
+      if (s.n > 0) {
+        out.hasPower = true;
+        out.pSec = s.n; out.pCov = s.n / T;
+        out.avgP = s.avg; out.maxP = s.max;
+        const np = W.normalizedPower(g);
+        out.np = np;
+        out.curve = {};
+        for (const d of W.DURS) { const m = W.maxMean(g, d); if (m != null) out.curve[d] = Math.round(m); }
+        out.ph = hist(g, W.PBIN, 0, 200);
+      }
+    }
+    if (st.heart_rate) {
+      const g = W.grid(st.time, st.heart_rate);
+      const s = stats(g);
+      if (s.n > 0) {
+        out.hasHr = true;
+        out.hSec = s.n; out.hCov = s.n / T;
+        out.avgHr = s.avg; out.maxHr = s.max;
+        out.hh = hist(g, W.HBIN, W.HLO, 40);
+      }
+    }
+    if (st.cadence) {
+      const g = W.grid(st.time, st.cadence).map(v => (v > 0 ? v : NaN));
+      const s = stats(g);
+      if (s.n > 0) out.avgCad = s.avg;
+    }
+    return out;
+  };
+
+  /* secondi per zona di potenza da istogramma (bin da 10 W, valore = centro del bin) */
+  W.powerZoneSecs = function (ph, ftp) {
+    const z = [0, 0, 0, 0, 0, 0, 0];
+    if (!ph || !ftp) return null;
+    for (let k = 0; k < ph.length; k++) if (ph[k]) z[W.zoneOfFrac(((k + 0.5) * W.PBIN) / ftp) - 1] += ph[k];
+    return z;
+  };
+  W.hrZoneSecs = function (hh, maxes) {
+    const z = [0, 0, 0, 0, 0];
+    if (!hh || !maxes || maxes.length < 4) return null;
+    for (let k = 0; k < hh.length; k++) if (hh[k]) z[W.zoneOfHr(W.HLO + (k + 0.5) * W.HBIN, maxes) - 1] += hh[k];
+    return z;
+  };
+  /* IF e TSS: richiedono NP (quindi almeno 20 min di dati) e una FTP. TSS = t × NP × IF / (FTP × 3600) × 100,
+     con t = secondi con dato di potenza. */
+  W.load = function (an, ftp) {
+    if (!an || an.np == null || !ftp) return null;
+    const IF = an.np / ftp;
+    return { np: an.np, IF: IF, tss: (an.pSec * an.np * IF) / (ftp * 3600) * 100 };
+  };
+  /* FTP in vigore a una data: ultima voce dello storico con data <= giorno. */
+  W.ftpAt = function (hist, day, fallback) {
+    let best = null;
+    for (const h of hist || []) if (h.date <= day && (!best || h.date >= best.date)) best = h;
+    if (best) return { ftp: best.ftp, exact: true };
+    return fallback ? { ftp: fallback, exact: false } : null;
+  };
+
+  /* ---------- Classificazione attività Strava ---------- */
+  const BIKE = ['Ride', 'GravelRide', 'MountainBikeRide', 'EBikeRide', 'EMountainBikeRide', 'Handcycle', 'Velomobile'];
+  W.classify = function (a) {
+    if (a.sport === 'VirtualRide') return { cat: 'virt', sure: /zwift/i.test(a.name || ''), note: /zwift/i.test(a.name || '') ? '' : 'Pedalata virtuale: Strava non indica la piattaforma, Zwift è presunto.' };
+    if (BIKE.indexOf(a.sport) >= 0) {
+      if (a.trainer) return { cat: 'indoor', sure: true, note: '' };
+      if (!a.dist) return { cat: 'indoor', sure: false, note: 'Nessuna distanza registrata: classificata indoor, ma Strava non la marca come rullo.' };
+      return { cat: 'outdoor', sure: true, note: '' };
+    }
+    return { cat: 'other', sure: true, note: '' };
+  };
+
+  /* ---------- Parser Bluetooth ---------- */
+  /* FTMS Indoor Bike Data (0x2AD2) */
+  W.parseIndoorBike = function (dv) {
+    const r = {};
+    if (dv.byteLength < 2) return r;
+    const f = dv.getUint16(0, true);
+    let o = 2;
+    const has = n => o + n <= dv.byteLength;
+    if (!(f & 1)) { if (!has(2)) return r; r.speed = dv.getUint16(o, true) / 100; o += 2; }
+    if (f & 2) o += 2;
+    if (f & 4) { if (!has(2)) return r; r.cadence = dv.getUint16(o, true) / 2; o += 2; }
+    if (f & 8) o += 2;
+    if (f & 16) o += 3;
+    if (f & 32) o += 2;
+    if (f & 64) { if (!has(2)) return r; r.power = dv.getInt16(o, true); o += 2; }
+    if (f & 128) o += 2;
+    if (f & 256) o += 5;
+    if (f & 512) { if (!has(1)) return r; r.hr = dv.getUint8(o); o += 1; }
+    return r;
+  };
+  /* Cycling Power Measurement (0x2A63) */
+  W.parseCyclingPower = function (dv) {
+    if (dv.byteLength < 4) return {};
+    return { power: dv.getInt16(2, true) };
+  };
+  /* Heart Rate Measurement (0x2A37) */
+  W.parseHeartRate = function (dv) {
+    if (dv.byteLength < 2) return {};
+    const f = dv.getUint8(0);
+    if (f & 1) return dv.byteLength >= 3 ? { hr: dv.getUint16(1, true) } : {};
+    return { hr: dv.getUint8(1) };
+  };
+  /* Fitness Machine Feature (0x2ACC): bit 3 dei target = potenza impostabile (ERG) */
+  W.ftmsPowerTarget = function (dv) {
+    if (dv.byteLength < 8) return false;
+    return (dv.getUint32(4, true) & 8) !== 0;
+  };
+  W.ergCommand = function (watts) {
+    const w = Math.max(0, Math.min(2000, Math.round(watts)));
+    return new Uint8Array([0x05, w & 0xff, (w >> 8) & 0xff]);
+  };
+
+
+  W.GOALINFO = {
+    rec: { what: 'Recupero attivo, Z1 (sotto il 55% della FTP).', when: 'Il giorno dopo sedute dure o gare, e nelle settimane di scarico.' },
+    end: { what: 'Base aerobica, Z2 (56–75%): fibre lente, mitocondri, capillari, uso dei grassi.', when: 'La maggior parte del volume settimanale; si può ripetere spesso.' },
+    tmp: { what: 'Ritmo medio, Z3 (76–90%): resistenza su sforzi lunghi ed economia di pedalata.', when: '1–2 volte a settimana; costa più della Z2 ma meno dello sweet spot.' },
+    ss: { what: 'Sweet spot (88–94%): stimolo sulla soglia con fatica contenuta.', when: '1–2 volte a settimana per far crescere la FTP con poco tempo.' },
+    thr: { what: 'Soglia, Z4 (95–105%): alza la potenza sostenibile prima che il lattato si accumuli.', when: 'Al massimo 1–2 volte a settimana, con un giorno facile dopo.' },
+    vo2: { what: 'VO₂max, Z5 (106–120%): il tetto aerobico.', when: 'Al massimo 1–2 volte a settimana, con gambe fresche.' }
+  };
+
+  /* Struttura compatta: riscaldamento/defaticamento uniti, coppie lavoro+recupero ripetute raggruppate. */
+  const eqB = (a, b) => a && b && a.d === b.d && a.p === b.p && a.k === b.k;
+  W.segments = function (blocks) {
+    const out = [];
+    let i = 0;
+    while (i < blocks.length) {
+      const b = blocks[i];
+      if (b.k === 'wu' || b.k === 'cd') {
+        let j = i, d = 0;
+        while (j < blocks.length && blocks[j].k === b.k) { d += blocks[j].d; j++; }
+        out.push({ t: b.k, d: d, from: b.p, to: blocks[j - 1].p });
+        i = j; continue;
+      }
+      let r = 1;
+      if (blocks[i + 1] && blocks[i + 1].k === 'w' && !eqB(b, blocks[i + 1])) { while (eqB(blocks[i + 2 * r], b) && eqB(blocks[i + 2 * r + 1], blocks[i + 1])) r++; }
+      if (r >= 2) { out.push({ t: 'rep', n: r, a: b, b: blocks[i + 1] }); i += 2 * r; continue; }
+      out.push({ t: 'one', a: b }); i++;
+    }
+    return out;
+  };
+  const pc = p => Math.round(p * 100) + '%';
+  const mm = s => (s % 60 === 0 ? s / 60 + ' min' : s < 60 ? s + ' s' : W.fmtTime(s));
+  const ww = (ftp, p) => (ftp ? ' (' + W.targetWatts(ftp, p) + ' W)' : '');
+  /* raggruppa sequenze di segmenti ripetute (es. blocchi sopra/sotto seguiti da recupero) */
+  W.groups = function (segs) {
+    const key = g => JSON.stringify(g);
+    const out = [];
+    let i = 0;
+    while (i < segs.length) {
+      let done = false;
+      for (let k = 2; k <= 3 && !done; k++) {
+        if (i + 2 * k > segs.length) continue;
+        const kk = segs.slice(i, i + k).map(key).join('|');
+        if (segs.slice(i, i + k).some(g => g.t === 'wu' || g.t === 'cd')) continue;
+        let m = 1;
+        while (i + (m + 1) * k <= segs.length && segs.slice(i + m * k, i + (m + 1) * k).map(key).join('|') === kk) m++;
+        if (m >= 2) { out.push({ t: 'grp', n: m, items: segs.slice(i, i + k) }); i += m * k; done = true; }
+      }
+      if (!done) { out.push(segs[i]); i++; }
+    }
+    return out;
+  };
+  W.segText = function (g, ftp) {
+    if (g.t === 'wu') return 'riscaldamento ' + mm(g.d);
+    if (g.t === 'cd') return 'defaticamento ' + mm(g.d);
+    if (g.t === 'rep') return g.n + '× (' + mm(g.a.d) + ' al ' + pc(g.a.p) + ww(ftp, g.a.p) + ' + ' + mm(g.b.d) + ' al ' + pc(g.b.p) + ww(ftp, g.b.p) + ')';
+    if (g.t === 'grp') return g.n + '× [' + g.items.map(x => W.segText(x, ftp)).join(', poi ') + ']';
+    return mm(g.a.d) + ' al ' + pc(g.a.p) + ww(ftp, g.a.p);
+  };
+  W.structureText = function (blocks, ftp) {
+    const t = W.groups(W.segments(blocks)).map(g => W.segText(g, ftp)).join(', ');
+    return t.charAt(0).toUpperCase() + t.slice(1) + '.';
+  };
+  W.stravaNote = function (w, ftp) {
+    const goal = (W.GOALS.find(g => g.id === w.goal) || {}).name || '';
+    return w.name + ' · ' + goal + ' · ' + w.dur + ' min' + (ftp ? ' · FTP ' + ftp + ' W' : '') + '\n' +
+      W.structureText(w.blocks, ftp) + '\n\n' +
+      'Perché: ' + w.why;
+  };
+
+  /* ---------- Carico ---------- */
+  /* TSS dalla FC (stima): ogni secondo vale IF² / 36, con IF = (FC − FC riposo) / (FC soglia − FC riposo).
+     È lo stesso schema del TSS da potenza (1 h a soglia = 100) applicato alla frequenza cardiaca. */
+  W.hrTss = function (hh, rest, lthr) {
+    if (!hh || !rest || !lthr || lthr <= rest) return null;
+    let s = 0, n = 0;
+    for (let k = 0; k < hh.length; k++) {
+      if (!hh[k]) continue;
+      n += hh[k];
+      const hr = W.HLO + (k + 0.5) * W.HBIN;
+      const f = (hr - rest) / (lthr - rest);
+      if (f > 0) s += (hh[k] * f * f) / 36;
+    }
+    return n ? s : null;
+  };
+  /* Carico di una attività: TSS da potenza se c'è NP (≥ 20 min di potenza), altrimenti stima dalla FC. */
+  W.activityLoad = function (an, ftp, rest, lthr) {
+    if (!an) return null;
+    const p = W.load(an, ftp);
+    if (p) return { tss: p.tss, src: 'power' };
+    const h = an.hasHr ? W.hrTss(an.hh, rest, lthr) : null;
+    if (h != null) return { tss: h, src: 'hr' };
+    return null;
+  };
+  const addDay = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+  W.addDay = addDay;
+  /* Forma (CTL, 42 giorni), fatica (ATL, 7 giorni), freschezza (TSB = forma − fatica del giorno prima). */
+  W.pmc = function (daily, from, to) {
+    const out = [];
+    let ctl = 0, atl = 0;
+    for (let d = from; d <= to; d = addDay(d, 1)) {
+      const t = daily[d] || 0;
+      const tsb = ctl - atl;
+      ctl += (t - ctl) / 42;
+      atl += (t - atl) / 7;
+      out.push({ day: d, tss: t, ctl: ctl, atl: atl, tsb: tsb });
+    }
+    return out;
+  };
+
+  /* ---------- File TCX per Strava: solo dati misurati, mai i target ---------- */
+  const xe = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  W.tcx = function (s) {
+    const iso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const n = s.ts.length;
+    let pts = '';
+    for (let i = 0; i < n; i++) {
+      const hr = s.h[i], w = s.w[i], c = s.c[i];
+      if (hr == null && w == null) continue;
+      pts += '<Trackpoint><Time>' + iso(s.ts[i]) + '</Time>' +
+        (hr != null ? '<HeartRateBpm><Value>' + Math.round(hr) + '</Value></HeartRateBpm>' : '') +
+        (c != null ? '<Cadence>' + Math.min(254, Math.round(c)) + '</Cadence>' : '') +
+        (w != null ? '<Extensions><ns3:TPX><ns3:Watts>' + Math.max(0, Math.round(w)) + '</ns3:Watts></ns3:TPX></Extensions>' : '') +
+        '</Trackpoint>\n';
+    }
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:ns3="http://www.garmin.com/xmlschemas/ActivityExtension/v2">\n' +
+      '<Activities><Activity Sport="Biking"><Id>' + iso(s.start) + '</Id>\n' +
+      '<Lap StartTime="' + iso(s.start) + '"><TotalTimeSeconds>' + Math.round(s.elapsed) + '</TotalTimeSeconds><DistanceMeters>0</DistanceMeters><Calories>0</Calories><Intensity>Active</Intensity><TriggerMethod>Manual</TriggerMethod>\n' +
+      '<Track>\n' + pts + '</Track></Lap>\n' +
+      '<Notes>' + xe(s.notes || '') + '</Notes>\n' +
+      '</Activity></Activities></TrainingCenterDatabase>\n';
+  };
+
+  W.fmtTime = function (sec) {
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    const p = n => (n < 10 ? '0' : '') + n;
+    return h ? h + ':' + p(m) + ':' + p(s) : m + ':' + p(s);
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = W;
+  root.WATT = W;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* WATT app: interfaccia, Strava (tramite connettore Claude), dispositivi Bluetooth, consolle. */
+(function () {
+  'use strict';
+  const W = window.WATT;
+  const $ = (s, r) => (r || document).querySelector(s);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const nf = (v, d) => (v == null || !isFinite(v)) ? '—' : Number(v).toLocaleString('it-IT', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+  const p2 = n => (n < 10 ? '0' : '') + n;
+  const localDay = d => d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+  const today = () => localDay(new Date());
+  const dmy = s => (s ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(2, 4) : '—');
+  const hm = ms => { const d = new Date(ms); return p2(d.getHours()) + ':' + p2(d.getMinutes()); };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const dur = sec => { sec = Math.round(sec || 0); const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h ? h + ' h ' + p2(m) : m + ' min'; };
+  const use = n => (window.claude && typeof window.claude.use === 'function') ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
+  const LS = {
+    get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* niente */ } }
+  };
+
+  /* ---------- Stato ---------- */
+  const SA = !!window.WATT_STANDALONE;
+  const DEF = { ftp: null, ftpHist: [], hrz: null, hrSrc: null, restHr: 50, lthr: null, mode: 'cyclette', voice: false, erg: true, months: 6, sessions: [], plan: [], updatedAt: 0 };
+  let P = Object.assign({}, DEF, (SA && !LS.get('watt.state') && window.WATT_SEED) ? window.WATT_SEED : {}, LS.get('watt.state') || {});
+  let acts = LS.get('watt.acts') || {};
+  let ans = LS.get('watt.an') || {};
+  let syncInfo = LS.get('watt.sync') || { at: null };
+  let strava = LS.get('watt.strava') || { ftp: null, hrz: null, weight: null };
+  const UI = { view: 'dashboard', period: 84, cat: 'all', dur: 60, goal: 'all', sel: null, open: {}, sync: { state: 'idle', msg: '' }, store: 'local', storeErr: null };
+  let charts = [];
+  let live = null;
+
+  /* ---------- Salvataggio: account Claude se disponibile, altrimenti questo browser ---------- */
+  let dbDoc = null, saveTimer = null, saving = false, dirty = false;
+  function save() {
+    P.updatedAt = Date.now();
+    LS.set('watt.state', P);
+    if (dbDoc) { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 1200); }
+  }
+  async function flush() {
+    if (saving || !dirty || !dbDoc) return;
+    saving = true; dirty = false;
+    try { await dbDoc.set(JSON.parse(JSON.stringify(P))); UI.store = 'account'; UI.storeErr = null; }
+    catch (e) { UI.store = 'local'; UI.storeErr = (e && e.code) || 'errore'; }
+    saving = false;
+    if (dirty) flush();
+  }
+  async function initStore() {
+    try {
+      const both = await Promise.all([use('db'), use('user')]);
+      const db = both[0], user = both[1];
+      if (!db || !user) return;
+      const id = await user.id();
+      if (!id) return;
+      dbDoc = db.doc('data/users/' + id + '/state');
+      const snap = await dbDoc.get();
+      if (snap.exists) {
+        const d = snap.data() || {};
+        if ((d.updatedAt || 0) >= (P.updatedAt || 0)) { P = Object.assign({}, DEF, JSON.parse(JSON.stringify(d))); LS.set('watt.state', P); }
+        else { dirty = true; flush(); }
+      } else if (P.updatedAt) { dirty = true; flush(); }
+      UI.store = 'account';
+    } catch (e) { UI.store = 'local'; UI.storeErr = (e && e.code) || null; }
+    if (!live) render();
+  }
+
+  const lthrOf = () => P.lthr || (P.hrz ? P.hrz[2] + 1 : null);
+  function setFtp(v, src, date) {
+    v = Math.round(v);
+    const d = date || today();
+    P.ftpHist = (P.ftpHist || []).filter(h => h.date !== d);
+    P.ftpHist.push({ date: d, ftp: v, src: src });
+    P.ftpHist.sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (d >= P.ftpHist[P.ftpHist.length - 1].date || P.ftp == null) P.ftp = v;
+    save();
+  }
+
+  /* ---------- Strava tramite il connettore dell'account Claude (sola lettura) ---------- */
+  let mcp = null;
+  const SRV = 'Strava';
+  const NOVIEW = 'In questa vista il collegamento a Strava non è disponibile. Apri WATT da claude.ai con il tuo account.';
+  const ERR = {
+    needs_reauth: 'Strava va ricollegato: claude.ai → Impostazioni → Connettori.',
+    server_not_connected: 'Connettore Strava non trovato: aggiungilo in claude.ai → Impostazioni → Connettori.',
+    selection_required: 'Hai più connettori Strava: scegline uno quando Claude lo chiede, poi premi Sincronizza.',
+    not_in_manifest: 'Strava non è autorizzato per questa pagina. Premi Sincronizza e consenti l’accesso.',
+    consent_required: 'Strava non è autorizzato per questa pagina. Premi Sincronizza e consenti l’accesso.',
+    approval_required: 'Serve la tua approvazione: premi Sincronizza e consenti.',
+    blocked_by_policy: 'L’organizzazione blocca questo strumento Strava.',
+    server_unavailable: 'Strava non risponde in questo momento. Riprova tra poco.',
+    rate_limited: 'Troppe richieste a Strava. Riprova tra qualche minuto.',
+    not_granted: NOVIEW, capability_disabled: NOVIEW, capability_removed: NOVIEW
+  };
+  const DENIED = ['needs_reauth', 'server_not_connected', 'selection_required', 'not_in_manifest', 'consent_required', 'approval_required', 'blocked_by_policy', 'not_granted', 'capability_disabled', 'capability_removed'];
+  function errMsg(e) {
+    const c = e && e.code;
+    if (ERR[c]) return ERR[c];
+    if (c === 'tool_error') return 'Strava ha rifiutato la richiesta: ' + String((e && e.message) || '').slice(0, 160);
+    return 'Sincronizzazione non riuscita (' + (c || 'errore sconosciuto') + '). Riprova.';
+  }
+  async function sv(tool, input, opts, retried) {
+    if (!mcp) throw { code: 'capability_disabled' };
+    try {
+      const r = await mcp.callTool(SRV, tool, input, opts);
+      let p = r ? r.payload : null;
+      if (p == null && r && r.structuredContent) p = r.structuredContent;
+      if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { /* testo libero */ } }
+      return p;
+    } catch (e) {
+      if (e && e.retryable && !retried) { await sleep(Math.min(e.retryAfterMs || 1500, 8000) + Math.random() * 600); return sv(tool, input, opts, true); }
+      throw e;
+    }
+  }
+  function setSync(state, msg) {
+    UI.sync = { state: state, msg: msg || '' };
+    const el = $('#syncline');
+    if (el) el.innerHTML = syncLine();
+  }
+  function compact(a) {
+    const s = a.summary || {};
+    return { id: String(a.id), name: a.name || '', sport: a.sport_type || '', start: a.start_local || '', trainer: !!a.is_trainer, dist: s.distance || 0, mov: s.moving_time || 0, elev: s.elevation_gain || 0, re: s.relative_effort == null ? null : s.relative_effort, kcal: s.total_calories == null ? null : s.total_calories };
+  }
+  const isoLocal = d => localDay(d) + 'T00:00:00';
+  async function sync() {
+    if (UI.sync.state === 'run') return;
+    if (!mcp) { setSync('err', NOVIEW); return; }
+    setSync('run', 'Leggo zone e profilo…');
+    try {
+      const z = await sv('get_athlete_zones', {}, { cache: { refresh: true } });
+      if (z && typeof z === 'object') {
+        strava.ftp = z.ftp || null; strava.ftpEst = !!z.ftp_is_estimated;
+        if (Array.isArray(z.heart_rate_zones) && z.heart_rate_zones.length >= 5) strava.hrz = z.heart_rate_zones.slice(0, 4).map(x => x.max);
+      }
+      try { const pr = await sv('get_athlete_profile', {}); if (pr && pr.weight) strava.weight = pr.weight; strava.focus = pr && pr.current_focus && pr.current_focus.open_text ? { text: pr.current_focus.open_text, until: String(pr.current_focus.expires_at_local || '').slice(0, 10) } : null; } catch (e) { if (DENIED.indexOf(e && e.code) >= 0) throw e; }
+      LS.set('watt.strava', strava);
+      if (P.ftp == null && strava.ftp) setFtp(strava.ftp, 'strava');
+      if (!P.hrz && strava.hrz) { P.hrz = strava.hrz.slice(); P.hrSrc = 'strava'; save(); }
+
+      const wanted = new Date(Date.now() - P.months * 30.44 * 864e5);
+      const starts = Object.values(acts).map(a => a.start).sort();
+      let from = wanted;
+      if (starts.length && Date.parse(starts[0]) <= wanted.getTime() + 14 * 864e5) from = new Date(Date.parse(starts[starts.length - 1]) - 14 * 864e5);
+      let cursor = null, pages = 0, added = 0, seen = 0;
+      do {
+        setSync('run', 'Importo attività… ' + seen);
+        const inp = { first: 100, include_tags: true, range_start: isoLocal(from), ordering: 'StartDateLocalAsc' };
+        if (cursor) inp.after = cursor;
+        const r = await sv('list_activities', inp, { cache: { refresh: true } });
+        const list = (r && r.activities) || [];
+        for (const a of list) { seen++; const c = compact(a); if (!c.id || !c.start) continue; if (!acts[c.id]) added++; acts[c.id] = c; }
+        cursor = r && r.has_next_page && r.end_cursor ? r.end_cursor : null;
+        pages++;
+      } while (cursor && pages < 20);
+      LS.set('watt.acts', acts);
+      syncInfo = { at: Date.now(), added: added, total: Object.keys(acts).length, truncated: !!cursor };
+      LS.set('watt.sync', syncInfo);
+      setSync('ok', '');
+      if (!live) render();
+      await analyzeQueue();
+    } catch (e) { setSync('err', errMsg(e)); }
+  }
+  const STREAMS = ['time', 'watts', 'heart_rate', 'cadence'];
+  const WEEK = 7 * 864e5;
+  async function analyzeOne(id) {
+    const st = await sv('get_activity_streams', { activity_id: String(id), streams: STREAMS }, { cache: { staleTime: WEEK, gcTime: WEEK } });
+    const an = W.analyze(st && typeof st === 'object' ? st : null);
+    ans[id] = an;
+    return an;
+  }
+  async function analyzeQueue() {
+    const lim = Date.now() - P.months * 30.44 * 864e5;
+    const q = Object.values(acts).filter(a => Date.parse(a.start) >= lim && !(ans[a.id] && ans[a.id].v === 2)).sort((a, b) => (a.start < b.start ? 1 : -1)).slice(0, 250);
+    let fail = 0;
+    for (let i = 0; i < q.length; i++) {
+      setSync('run', 'Analizzo potenza e FC delle attività… ' + (i + 1) + '/' + q.length);
+      try { await analyzeOne(q[i].id); }
+      catch (e) { if (DENIED.indexOf(e && e.code) >= 0) { LS.set('watt.an', ans); setSync('err', errMsg(e)); return; } fail++; }
+      if (i % 6 === 5) { LS.set('watt.an', ans); if (!live && UI.view === 'dashboard' && !$('#modal .box')) render(); }
+    }
+    LS.set('watt.an', ans);
+    setSync('ok', fail ? fail + ' attività non analizzate: verranno riprovate alla prossima sincronizzazione.' : '');
+    if (!live && UI.view === 'dashboard' && !$('#modal .box')) render();
+  }
+  function syncLine() {
+    const s = UI.sync, n = Object.keys(acts).length;
+    const all = Object.values(acts);
+    const done = all.filter(a => ans[a.id]).length;
+    let t;
+    if (s.state === 'run') t = '<span class="dot run"></span><span>' + esc(s.msg) + '</span>';
+    else if (s.state === 'err') t = '<span class="dot err"></span><span>' + esc(s.msg) + '</span>';
+    else if (syncInfo.at) t = '<span class="dot ok"></span><span>Strava: ultimo aggiornamento ' + dmy(localDay(new Date(syncInfo.at))) + ' alle ' + hm(syncInfo.at) + ' · ' + n + ' attività importate · serie analizzate per ' + done + ' di ' + all.length + (syncInfo.truncated ? ' · importazione parziale: premi di nuovo Sincronizza' : '') + (s.msg ? ' · ' + esc(s.msg) : '') + '</span>';
+    else t = '<span class="dot"></span><span>Strava: nessuna sincronizzazione ancora eseguita.</span>';
+    return t;
+  }
+
+  /* ---------- Aggregazioni ---------- */
+  const CATS = [['all', 'Tutte'], ['virt', 'Zwift / virtuale'], ['indoor', 'Indoor'], ['outdoor', 'Bici outdoor'], ['other', 'Altri sport']];
+  const CATNAME = { virt: 'Zwift / virtuale', indoor: 'Indoor', outdoor: 'Outdoor', other: 'Altro sport' };
+  const PERIODS = [[28, '4 settimane'], [84, '12 settimane'], [182, '6 mesi'], [365, '12 mesi']];
+  const catOk = a => UI.cat === 'all' || W.classify(a).cat === UI.cat;
+  function inPeriod(days, off) {
+    const end = Date.now() - off * 864e5, st = end - days * 864e5;
+    return Object.values(acts).filter(a => { const t = Date.parse(a.start); return t >= st && t < end && catOk(a); });
+  }
+  const ftpFor = a => W.ftpAt(P.ftpHist, a.start.slice(0, 10), P.ftp);
+  function agg(list) {
+    const o = { n: list.length, sec: 0, km: 0, pN: 0, pSec: 0, pSum: 0, maxP: null, hN: 0, hSec: 0, hSum: 0, maxHr: null, tss: 0, tssN: 0, approx: false, pz: [0, 0, 0, 0, 0, 0, 0], hz: [0, 0, 0, 0, 0], curve: {} };
+    for (const a of list) {
+      o.sec += a.mov; o.km += a.dist / 1000;
+      const an = ans[a.id];
+      if (!an) continue;
+      if (an.hasPower) {
+        o.pN++; o.pSec += an.pSec; o.pSum += an.avgP * an.pSec;
+        if (o.maxP == null || an.maxP > o.maxP) o.maxP = an.maxP;
+        const f = ftpFor(a);
+        if (f) {
+          const z = W.powerZoneSecs(an.ph, f.ftp);
+          if (z) z.forEach((s, i) => { o.pz[i] += s; });
+          const l = W.load(an, f.ftp);
+          if (l) { o.tss += l.tss; o.tssN++; }
+          if (!f.exact) o.approx = true;
+        }
+        for (const d in an.curve) if (!o.curve[d] || an.curve[d] > o.curve[d].w) o.curve[d] = { w: an.curve[d], a: a };
+      }
+      if (an.hasHr) {
+        o.hN++; o.hSec += an.hSec; o.hSum += an.avgHr * an.hSec;
+        if (o.maxHr == null || an.maxHr > o.maxHr) o.maxHr = an.maxHr;
+        const z = W.hrZoneSecs(an.hh, P.hrz);
+        if (z) z.forEach((s, i) => { o.hz[i] += s; });
+      }
+    }
+    return o;
+  }
+  function mondayOf(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+  function weeksData(days) {
+    const end = mondayOf(new Date()), nW = Math.ceil(days / 7), weeks = [], idx = {};
+    for (let i = nW - 1; i >= 0; i--) { const d = new Date(end); d.setDate(d.getDate() - 7 * i); const w = { k: localDay(d), virt: 0, indoor: 0, outdoor: 0, other: 0, n: 0 }; weeks.push(w); idx[w.k] = w; }
+    for (const a of Object.values(acts)) {
+      if (!catOk(a)) continue;
+      const t = new Date(a.start); if (isNaN(t)) continue;
+      const w = idx[localDay(mondayOf(t))]; if (!w) continue;
+      w[W.classify(a).cat] += a.mov / 3600; w.n++;
+    }
+    return weeks;
+  }
+
+  /* ---------- Grafici (SVG disegnato alla larghezza reale) ---------- */
+  function chart(fn) { const id = 'ch' + charts.length; charts.push({ id: id, fn: fn }); return '<div class="chart" id="' + id + '"></div>'; }
+  function drawCharts() { for (const c of charts) { const el = document.getElementById(c.id); if (el) el.innerHTML = c.fn(Math.max(260, el.clientWidth || 320)); } }
+  function niceTop(v, steps) { for (const s of steps) if (s >= v) return s; return Math.ceil(v / 100) * 100; }
+  function svgWeeks(weeks, w) {
+    const h = 210, m = { t: 16, r: 6, b: 22, l: 30 };
+    const tot = x => x.virt + x.indoor + x.outdoor + x.other;
+    const top = niceTop(Math.max(1, Math.max.apply(null, weeks.map(tot))), [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50]);
+    const bw = (w - m.l - m.r) / weeks.length, y = v => h - m.b - (v / top) * (h - m.t - m.b);
+    let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Ore di allenamento per settimana, per tipo di attività">';
+    for (const g of [0, top / 2, top]) s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + y(g) + '" y2="' + y(g) + '" stroke="#3a3f4b" stroke-width="1"/><text x="' + (m.l - 5) + '" y="' + (y(g) + 4) + '" text-anchor="end">' + nf(g, g % 1 ? 1 : 0) + ' h</text>';
+    const every = Math.max(1, Math.ceil(weeks.length / Math.max(1, Math.floor((w - m.l - m.r) / 46))));
+    weeks.forEach((wk, i) => {
+      const x = m.l + i * bw + bw * 0.14, ww = bw * 0.72;
+      let acc = 0;
+      const tip = 'Settimana del ' + dmy(wk.k) + ' · ' + nf(tot(wk), 1) + ' h in ' + wk.n + ' sessioni' + (wk.virt ? ' · Zwift/virtuale ' + nf(wk.virt, 1) + ' h' : '') + (wk.indoor ? ' · indoor ' + nf(wk.indoor, 1) + ' h' : '') + (wk.outdoor ? ' · bici outdoor ' + nf(wk.outdoor, 1) + ' h' : '') + (wk.other ? ' · altri sport ' + nf(wk.other, 1) + ' h' : '');
+      s += '<g data-tip="' + esc(tip) + '"><rect x="' + (m.l + i * bw) + '" y="' + m.t + '" width="' + bw + '" height="' + (h - m.t - m.b) + '" fill="transparent"/>';
+      for (const k of ['virt', 'indoor', 'outdoor', 'other']) {
+        if (!wk[k]) continue;
+        const y1 = y(acc + wk[k]), y0 = y(acc);
+        s += '<rect x="' + x + '" y="' + y1 + '" width="' + ww + '" height="' + Math.max(0, y0 - y1 - 1) + '" rx="2" fill="var(--c-' + k + ')"/>';
+        acc += wk[k];
+      }
+      if (bw >= 30 && tot(wk) > 0) s += '<text class="v" x="' + (x + ww / 2) + '" y="' + (y(acc) - 4) + '" text-anchor="middle">' + nf(tot(wk), 1) + '</text>';
+      s += '</g>';
+      if (i % every === 0) s += '<text x="' + (x + ww / 2) + '" y="' + (h - 6) + '" text-anchor="middle">' + wk.k.slice(8, 10) + '/' + wk.k.slice(5, 7) + '</text>';
+    });
+    return s + '</svg>';
+  }
+  const DLAB = { 5: '5 s', 15: '15 s', 30: '30 s', 60: '1 min', 300: '5 min', 600: '10 min', 1200: '20 min', 3600: '60 min' };
+  function svgCurve(curve, w, ftp) {
+    const pts = W.DURS.filter(d => curve[d] != null).map(d => ({ d: d, v: typeof curve[d] === 'object' ? curve[d].w : curve[d], a: typeof curve[d] === 'object' ? curve[d].a : null }));
+    if (!pts.length) return '<p class="empty">Nessuna serie di potenza nel periodo e nel filtro scelti.</p>';
+    const h = 230, m = { t: 24, r: 18, b: 24, l: 36 };
+    const top = niceTop(Math.max.apply(null, pts.map(p => p.v)) * 1.08, [200, 300, 400, 500, 600, 800, 1000, 1200, 1500, 2000]);
+    const lx = d => (Math.log(d) - Math.log(5)) / (Math.log(3600) - Math.log(5));
+    const x = d => m.l + lx(d) * (w - m.l - m.r), y = v => h - m.b - (v / top) * (h - m.t - m.b);
+    let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Curva di potenza: migliore media per ciascuna durata">';
+    for (const g of [0, top / 2, top]) s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + y(g) + '" y2="' + y(g) + '" stroke="#3a3f4b"/><text x="' + (m.l - 5) + '" y="' + (y(g) + 4) + '" text-anchor="end">' + g + '</text>';
+    if (ftp && ftp < top) s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + y(ftp) + '" y2="' + y(ftp) + '" stroke="#9ba3b0" stroke-dasharray="4 4"/><text x="' + (m.l + 6) + '" y="' + (y(ftp) + 13) + '">FTP ' + ftp + ' W</text>';
+    const line = pts.map((p, i) => (i ? 'L' : 'M') + x(p.d).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
+    s += '<path d="' + line + ' L' + x(pts[pts.length - 1].d).toFixed(1) + ' ' + y(0) + ' L' + x(pts[0].d).toFixed(1) + ' ' + y(0) + ' Z" fill="rgba(255,106,26,.14)"/><path d="' + line + '" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>';
+    for (const d of W.DURS) s += '<text x="' + x(d) + '" y="' + (h - 6) + '" text-anchor="middle">' + DLAB[d].replace(' min', 'm').replace(' s', 's') + '</text>';
+    for (const p of pts) {
+      const tip = DLAB[p.d] + ': ' + p.v + ' W' + (strava.weight ? ' (' + nf(p.v / strava.weight, 2) + ' W/kg)' : '') + (p.a ? ' · ' + dmy(p.a.start) + ' · ' + p.a.name : '');
+      s += '<g data-tip="' + esc(tip) + '"><circle cx="' + x(p.d) + '" cy="' + y(p.v) + '" r="14" fill="transparent"/><circle cx="' + x(p.d) + '" cy="' + y(p.v) + '" r="4" fill="var(--bg)" stroke="var(--acc)" stroke-width="2.5"/><text class="v" x="' + x(p.d) + '" y="' + (y(p.v) - 9) + '" text-anchor="middle">' + p.v + '</text></g>';
+    }
+    return s + '</svg>';
+  }
+  function svgFtp(hist, w) {
+    const h = 150, m = { t: 22, r: 40, b: 22, l: 36 };
+    const t0 = Date.parse(hist[0].date), t1 = Math.max(Date.now(), Date.parse(hist[hist.length - 1].date) + 864e5);
+    const vs = hist.map(x => x.ftp), lo = Math.floor((Math.min.apply(null, vs) - 10) / 10) * 10, hi = Math.ceil((Math.max.apply(null, vs) + 10) / 10) * 10;
+    const x = t => m.l + ((t - t0) / (t1 - t0 || 1)) * (w - m.l - m.r), y = v => h - m.b - ((v - lo) / (hi - lo)) * (h - m.t - m.b);
+    let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Evoluzione della FTP registrata">';
+    for (const g of [lo, hi]) s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + y(g) + '" y2="' + y(g) + '" stroke="#3a3f4b"/><text x="' + (m.l - 5) + '" y="' + (y(g) + 4) + '" text-anchor="end">' + g + '</text>';
+    let d = '';
+    hist.forEach((p, i) => { const X = x(Date.parse(p.date)); d += (i ? 'L' + X + ' ' + y(hist[i - 1].ftp) + ' L' : 'M') + X + ' ' + y(p.ftp) + ' '; });
+    d += 'L' + x(t1) + ' ' + y(hist[hist.length - 1].ftp);
+    s += '<path d="' + d + '" fill="none" stroke="var(--acc)" stroke-width="2.5"/>';
+    hist.forEach(p => { const X = x(Date.parse(p.date)); s += '<g data-tip="' + esc(dmy(p.date) + ': ' + p.ftp + ' W (' + srcName(p.src) + ')') + '"><circle cx="' + X + '" cy="' + y(p.ftp) + '" r="12" fill="transparent"/><circle cx="' + X + '" cy="' + y(p.ftp) + '" r="4" fill="var(--bg)" stroke="var(--acc)" stroke-width="2.5"/><text class="v" x="' + X + '" y="' + (y(p.ftp) - 8) + '" text-anchor="middle">' + p.ftp + '</text></g>'; });
+    s += '<text x="' + m.l + '" y="' + (h - 6) + '">' + dmy(hist[0].date) + '</text><text x="' + (w - m.r) + '" y="' + (h - 6) + '" text-anchor="end">oggi</text>';
+    return s + '</svg>';
+  }
+  const srcName = s => (s === 'strava' ? 'importata da Strava' : 'inserita a mano');
+  function wkSvg(blocks) {
+    const T = W.total(blocks), H = 100, top = 1.3;
+    let x = 0, s = '<svg class="wsvg" viewBox="0 0 1000 ' + H + '" preserveAspectRatio="none" role="img" aria-label="Profilo del workout: larghezza = durata, altezza = intensità rispetto alla FTP">';
+    for (const b of blocks) {
+      const w = (b.d / T) * 1000, h = Math.min(1, b.p / top) * H;
+      s += '<rect x="' + x.toFixed(2) + '" y="' + (H - h).toFixed(2) + '" width="' + Math.max(0.5, w - 1).toFixed(2) + '" height="' + h.toFixed(2) + '" fill="var(--z' + W.zoneOfFrac(b.p) + ')"/>';
+      x += w;
+    }
+    const yf = H - (1 / top) * H;
+    return s + '<line x1="0" x2="1000" y1="' + yf + '" y2="' + yf + '" stroke="#fff" stroke-opacity=".45" stroke-dasharray="6 6" vector-effect="non-scaling-stroke"/></svg>';
+  }
+  function zoneRows(secs, names, cls) {
+    const tot = secs.reduce((a, b) => a + b, 0);
+    if (!tot) return '<p class="empty">Nessun dato nel periodo e nel filtro scelti.</p>';
+    return '<div class="zrows">' + secs.map((s, i) => '<div class="zrow"><div><span class="zc z' + cls[i] + '">Z' + (i + 1) + '</span>' + esc(names[i]) + '</div><div class="bar"><i class="z' + cls[i] + '" style="width:' + ((s / tot) * 100).toFixed(1) + '%"></i></div><div class="t">' + dur(s) + ' · ' + nf((s / tot) * 100) + '%</div></div>').join('') + '</div>';
+  }
+  const HZN = ['Molto leggera', 'Leggera', 'Media', 'Intensa', 'Massimale'], HZC = [1, 2, 3, 5, 6];
+
+  /* ---------- Carico nel tempo ---------- */
+  function loadSeries() {
+    const rest = P.restHr, lthr = lthrOf(), daily = {};
+    let first = null, nPow = 0, nHr = 0, nNone = 0, nWait = 0;
+    for (const a of Object.values(acts)) {
+      const d = a.start.slice(0, 10);
+      if (!first || d < first) first = d;
+      if (!ans[a.id]) { nWait++; continue; }
+      const f = ftpFor(a), l = W.activityLoad(ans[a.id], f && f.ftp, rest, lthr);
+      if (!l) { nNone++; continue; }
+      daily[d] = (daily[d] || 0) + l.tss;
+      if (l.src === 'power') nPow++; else nHr++;
+    }
+    if (!first) return null;
+    return { pm: W.pmc(daily, first, today()), first: first, nPow: nPow, nHr: nHr, nNone: nNone, nWait: nWait };
+  }
+  function tsbText(t) {
+    if (t > 15) return ['Molto fresco', 'riposato: buono prima di una gara, ma se dura a lungo la forma cala.'];
+    if (t > 5) return ['Fresco', 'pronto per una seduta di qualità o una gara.'];
+    if (t >= -10) return ['Neutro', 'carico e recupero in equilibrio.'];
+    if (t >= -30) return ['Carico produttivo', 'stai costruendo forma; tieni d’occhio il recupero.'];
+    return ['Sovraccarico', 'fatica molto sopra la forma: rischio alto, inserisci giorni facili.'];
+  }
+  function svgPmc(rows, w) {
+    const h = 260, m = { t: 14, r: 10, b: 22, l: 34 }, gap = 14, hb = 56;
+    const h1 = h - m.t - m.b - gap - hb;
+    let hi = 10, lo = 0, tmax = 10;
+    for (const r of rows) { hi = Math.max(hi, r.ctl, r.atl); lo = Math.min(lo, r.tsb); tmax = Math.max(tmax, r.tss); }
+    hi = Math.ceil(hi / 10) * 10; lo = Math.floor(lo / 10) * 10; tmax = niceTop(tmax, [50, 100, 150, 200, 300, 400, 500]);
+    const n = rows.length, bw = (w - m.l - m.r) / n;
+    const X = i => m.l + (i + 0.5) * bw, Y = v => m.t + ((hi - v) / (hi - lo)) * h1;
+    const yb0 = m.t + h1 + gap + hb, Yb = v => yb0 - (v / tmax) * hb;
+    let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Carico nel tempo: forma, fatica e freschezza giorno per giorno, con il TSS giornaliero">';
+    for (const g of [lo, 0, hi]) if (g === 0 || g === hi || (lo < 0 && Y(lo) - Y(0) > 14)) s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + Y(g) + '" y2="' + Y(g) + '" stroke="' + (g === 0 ? '#5a6070' : '#3a3f4b') + '"/><text x="' + (m.l - 5) + '" y="' + (Y(g) + 4) + '" text-anchor="end">' + g + '</text>';
+    let area = 'M' + X(0) + ' ' + Y(0);
+    rows.forEach((r, i) => { area += ' L' + X(i).toFixed(1) + ' ' + Y(r.tsb).toFixed(1); });
+    area += ' L' + X(n - 1) + ' ' + Y(0) + ' Z';
+    s += '<path d="' + area + '" fill="rgba(76,195,138,.22)"/>';
+    const line = (k, col, wd) => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(r[k]).toFixed(1)).join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + wd + '" stroke-linejoin="round"/>';
+    s += line('tsb', 'var(--ok)', 1.5) + line('atl', '#ff5d73', 1.8) + line('ctl', 'var(--acc)', 2.8);
+    const L = rows[n - 1];
+    s += '<circle cx="' + X(n - 1) + '" cy="' + Y(L.ctl) + '" r="4" fill="var(--acc)"/><text class="v" x="' + (X(n - 1) - 6) + '" y="' + (Y(L.ctl) - 7) + '" text-anchor="end">' + Math.round(L.ctl) + '</text>';
+    s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + yb0 + '" y2="' + yb0 + '" stroke="#3a3f4b"/><text x="' + (m.l - 5) + '" y="' + (Yb(tmax) + 8) + '" text-anchor="end">' + tmax + '</text><text x="' + (m.l - 5) + '" y="' + (yb0) + '" text-anchor="end">0</text>';
+    rows.forEach((r, i) => {
+      if (r.tss > 0) s += '<rect x="' + (X(i) - Math.max(1, bw * 0.35)) + '" y="' + Yb(r.tss) + '" width="' + Math.max(2, bw * 0.7) + '" height="' + (yb0 - Yb(r.tss)) + '" fill="#6b7380"/>';
+      s += '<rect x="' + (m.l + i * bw) + '" y="' + m.t + '" width="' + bw + '" height="' + (yb0 - m.t) + '" fill="transparent" data-tip="' + esc(dmy(r.day) + ' · TSS ' + Math.round(r.tss) + ' · forma ' + Math.round(r.ctl) + ' · fatica ' + Math.round(r.atl) + ' · freschezza ' + Math.round(r.tsb)) + '"/>';
+    });
+    const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((w - m.l - m.r) / 52))));
+    rows.forEach((r, i) => { if ((n - 1 - i) % every === 0) s += '<text x="' + X(i) + '" y="' + (h - 6) + '" text-anchor="middle">' + r.day.slice(8, 10) + '/' + r.day.slice(5, 7) + '</text>'; });
+    return s + '</svg>';
+  }
+  function vLoad() {
+    const L = loadSeries();
+    if (!L) return '';
+    const rows = L.pm.slice(-UI.period), cur = rows[rows.length - 1], wk = L.pm[L.pm.length - 8];
+    const ramp = wk ? cur.ctl - wk.ctl : null, tt = tsbText(cur.tsb);
+    const warm = Math.round((Date.parse(today()) - Date.parse(L.first)) / 864e5) < 42;
+    let h = '<div class="card" id="carico"><div class="row spread"><h3>Carico nel tempo</h3>' + (strava.focus && strava.focus.until && strava.focus.until >= today() ? '<span class="small mut">Obiettivo Strava entro il ' + dmy(strava.focus.until) + ' · ' + Math.round((Date.parse(strava.focus.until) - Date.parse(today())) / 864e5) + ' giorni</span>' : '') + '</div>';
+    h += '<div class="tiles">' +
+      tile('Forma (CTL)', nf(cur.ctl), '', 'carico medio delle ultime 6 settimane') +
+      tile('Fatica (ATL)', nf(cur.atl), '', 'carico medio dell’ultima settimana') +
+      tile('Freschezza (TSB)', (cur.tsb > 0 ? '+' : '') + nf(cur.tsb), '', '<b style="color:var(--fg)">' + tt[0] + '</b>: ' + tt[1]) +
+      tile('Forma in 7 giorni', ramp == null ? '—' : (ramp > 0 ? '+' : ramp < 0 ? '−' : '') + nf(Math.abs(ramp), 1), '', ramp == null ? '&nbsp;' : ramp > 8 ? '<span class="down">crescita molto rapida</span>' : ramp < -3 ? 'forma in calo' : 'crescita sostenibile (fino a +5/+8)') +
+      '</div>';
+    h += chart(w => svgPmc(rows, w));
+    h += '<div class="legend"><span><i style="background:var(--acc)"></i>Forma</span><span><i style="background:#ff5d73"></i>Fatica</span><span><i style="background:var(--ok)"></i>Freschezza</span><span><i style="background:#6b7380"></i>TSS del giorno</span></div>';
+    h += '<p class="small mut">Comprende tutti gli sport, a prescindire dal filtro. TSS da potenza per ' + L.nPow + ' attività con almeno 20 minuti di potenza; stimato dalla FC per ' + L.nHr + ' (FC a riposo ' + (P.restHr || '—') + ', FC di soglia ' + (lthrOf() || '—') + ', in Impostazioni)' + (L.nNone ? '; ' + L.nNone + ' senza potenza né FC non entrano' : '') + (L.nWait ? '; ' + L.nWait + ' ancora da analizzare' : '') + '. Le sessioni fatte in WATT contano dopo che le carichi su Strava.' + (warm ? ' Lo storico importato copre meno di 6 settimane: la forma è sottostimata.' : '') + '</p>';
+    h += '<details><summary class="small mut">Come si calcola</summary><p class="small mut" style="margin-top:6px">TSS da potenza = secondi × NP × IF / (FTP × 3600) × 100. TSS dalla FC (stima): ogni secondo vale IF² / 36 con IF = (FC − FC a riposo) / (FC di soglia − FC a riposo); un’ora alla soglia vale 100 come per la potenza. Forma = media esponenziale del TSS giornaliero su 42 giorni, fatica su 7 giorni, freschezza = forma − fatica del giorno prima. La stima dalla FC è meno precisa di quella da potenza: caldo, stanchezza e caffeina spostano la FC.</p></details></div>';
+    return h;
+  }
+
+  /* ---------- Vista: Dashboard ---------- */
+  function estFtp() {
+    const lim = Date.now() - 90 * 864e5; let best = null;
+    for (const a of Object.values(acts)) { const an = ans[a.id]; if (!an || !an.curve || an.curve[1200] == null || Date.parse(a.start) < lim) continue; if (!best || an.curve[1200] > best.w) best = { w: an.curve[1200], a: a }; }
+    return best ? { ftp: Math.round(best.w * 0.95), w: best.w, a: best.a } : null;
+  }
+  function delta(cur, prev, d, unit) {
+    if (prev == null) return '<span class="mut">nessun confronto: storico importato troppo corto</span>';
+    const x = cur - prev;
+    return '<span class="' + (x > 0 ? 'up' : x < 0 ? 'down' : 'mut') + '">' + (x > 0 ? '+' : x < 0 ? '−' : '') + nf(Math.abs(x), d) + (unit || '') + '</span> rispetto al periodo precedente';
+  }
+  function tile(lab, val, unit, sub) { return '<div class="tile"><div class="lab">' + lab + '</div><div class="val">' + val + (unit ? '<small>' + unit + '</small>' : '') + '</div><div class="sub">' + (sub || '&nbsp;') + '</div></div>'; }
+  function actRow(a) {
+    const c = W.classify(a), an = ans[a.id], f = ftpFor(a), l = an && f ? W.load(an, f.ftp) : null;
+    return '<tr class="click" data-act="detail" data-v="' + esc(a.id) + '"><td>' + dmy(a.start) + '</td><td class="name">' + esc(a.name) + (c.cat !== 'other' ? '<span class="badge ' + c.cat + '">' + CATNAME[c.cat] + (c.sure ? '' : ' ?') + '</span>' : '<span class="badge">' + esc(a.sport) + '</span>') + '</td><td class="r">' + dur(a.mov) + '</td><td class="r">' + (an && an.hasPower ? nf(an.avgP) + ' W' : '—') + '</td><td class="r">' + (an && an.np != null ? nf(an.np) + ' W' : '—') + '</td><td class="r">' + (l ? nf(l.IF, 2) : '—') + '</td><td class="r">' + (l ? nf(l.tss) : '—') + '</td><td class="r">' + (an && an.hasHr ? nf(an.avgHr) : '—') + '</td></tr>';
+  }
+  function vDashboard() {
+    const days = UI.period, list = inPeriod(days, 0), cur = agg(list);
+    const covered = syncInfo.at && P.months * 30.44 >= days * 2;
+    const prev = covered ? agg(inPeriod(days, days)) : null;
+    const wk = days / 7, est = estFtp();
+    let h = '<div class="row spread"><h2>Dashboard</h2><div class="row"><div class="status" id="syncline">' + syncLine() + '</div><button class="btn sm" data-act="sync">Sincronizza</button></div></div>';
+    h += '<div class="card"><div class="row"><div class="chips" role="group" aria-label="Periodo">' + PERIODS.map(p => '<button class="chip' + (UI.period === p[0] ? ' on' : '') + '" data-act="period" data-v="' + p[0] + '">' + p[1] + '</button>').join('') + '</div></div><div class="chips" role="group" aria-label="Tipo di attività">' + CATS.map(c => '<button class="chip' + (UI.cat === c[0] ? ' on' : '') + '" data-act="cat" data-v="' + c[0] + '">' + c[1] + '</button>').join('') + '</div><p class="small mut">Dati importati da Strava. «Zwift / virtuale» sono le pedalate che Strava marca come virtuali: la piattaforma non è indicata, quindi dove il nome non cita Zwift la classificazione è presunta e segnata con «?».</p></div>';
+    if (!Object.keys(acts).length) {
+      h += '<div class="card"><h3>Nessuna attività importata</h3><p>Premi Sincronizza per leggere le tue attività da Strava attraverso il connettore del tuo account Claude. La prima volta Claude ti chiede il permesso.</p><div><button class="btn pri" data-act="sync">Sincronizza con Strava</button></div></div>';
+      return h;
+    }
+    h += '<div class="tiles">' +
+      tile('Sessioni', nf(cur.n), '', delta(cur.n, prev && prev.n, 0)) +
+      tile('Durata', nf(cur.sec / 3600, 1), 'h', delta(cur.sec / 3600, prev && prev.sec / 3600, 1, ' h')) +
+      tile('Volume settimanale', nf(cur.sec / 3600 / wk, 1), 'h/sett', nf(cur.km / wk) + ' km a settimana') +
+      tile('Potenza media', cur.pN ? nf(cur.pSum / cur.pSec) : '—', cur.pN ? 'W' : '', cur.pN ? 'pesata sul tempo · ' + cur.pN + ' sessioni con potenza' : 'nessuna sessione con potenza misurata') +
+      tile('Potenza massima', cur.maxP != null ? nf(cur.maxP) : '—', cur.maxP != null ? 'W' : '', 'picco di 1 s') +
+      tile('FC media', cur.hN ? nf(cur.hSum / cur.hSec) : '—', cur.hN ? 'bpm' : '', cur.hN ? cur.hN + ' sessioni con FC analizzate' : 'solo uscite in bici analizzate') +
+      tile('FC massima', cur.maxHr != null ? nf(cur.maxHr) : '—', cur.maxHr != null ? 'bpm' : '', '&nbsp;') +
+      tile('TSS', cur.tssN ? nf(cur.tss) : '—', '', cur.tssN ? cur.tssN + ' sessioni con almeno 20 min di potenza' + (cur.approx ? ' · FTP attuale applicata a date senza FTP registrata' : '') : 'servono serie di potenza e una FTP') +
+      '</div>';
+    h += vLoad();
+    h += '<div class="card"><h3>Volume per settimana (lun–dom)</h3>' + chart(w => svgWeeks(weeksData(days), w)) + '<div class="legend"><span><i style="background:var(--c-virt)"></i>Zwift / virtuale</span><span><i style="background:var(--c-indoor)"></i>Indoor</span><span><i style="background:var(--c-outdoor)"></i>Bici outdoor</span><span><i style="background:var(--c-other)"></i>Altri sport</span></div></div>';
+    h += '<div class="grid2"><div class="card"><h3>Curva di potenza</h3>' + chart(w => svgCurve(cur.curve, w, P.ftp)) + '<p class="small mut">Migliore media per durata, calcolata dalle serie secondo per secondo di ogni attività. Una finestra vale solo se almeno il 95% dei suoi secondi ha un campione: pause e buchi di segnale non vengono riempiti.</p></div>';
+    h += '<div class="card"><h3>FTP</h3><div class="kv"><div><span>Inserita</span><b>' + (P.ftp ? P.ftp + ' W' : '—') + '</b></div><div><span>Strava' + (strava.ftpEst ? ' (stimata)' : '') + '</span><b>' + (strava.ftp ? strava.ftp + ' W' : '—') + '</b></div><div><span>Stimata</span><b>' + (est ? '≈ ' + est.ftp + ' W' : '—') + '</b></div>' + (P.ftp && strava.weight ? '<div><span>W/kg</span><b>' + nf(P.ftp / strava.weight, 2) + '</b></div>' : '') + '</div>' +
+      '<p class="small mut">' + (est ? 'Stima = 95% dei migliori 20 min degli ultimi 90 giorni (' + est.w + ' W il ' + dmy(est.a.start) + '). Vale come FTP solo se quei 20 minuti erano uno sforzo massimale e costante; in caso contrario sottostima. Non è una misura.' : 'Per una stima serve almeno un tratto di 20 minuti con potenza negli ultimi 90 giorni.') + '</p>' +
+      ((P.ftpHist || []).length >= 2 ? chart(w => svgFtp(P.ftpHist, w)) : '<p class="small mut">Storico FTP registrato: ' + ((P.ftpHist || []).length ? P.ftpHist.map(x => x.ftp + ' W dal ' + dmy(x.date) + ' (' + srcName(x.src) + ')').join(', ') + '. Il grafico compare dalla seconda voce.' : 'nessuna voce.') + '</p>') + '</div></div>';
+    h += '<div class="grid2"><div class="card"><h3>Tempo nelle zone di potenza</h3>' + zoneRows(cur.pz, W.PZ.map(z => z.name), [1, 2, 3, 4, 5, 6, 7]) + '<p class="small mut">Zone in percentuale della FTP in vigore alla data dell’attività' + (cur.approx ? '; dove non c’era una FTP registrata è stata usata quella attuale' : '') + '.</p></div><div class="card"><h3>Tempo nelle zone cardiache</h3>' + (P.hrz ? zoneRows(cur.hz, HZN, HZC) : '<p class="empty">Imposta le zone cardiache in Impostazioni.</p>') + '</div></div>';
+    const rows = list.slice().sort((a, b) => (a.start < b.start ? 1 : -1)).slice(0, 40);
+    h += '<div class="card"><h3>Attività (' + list.length + ')</h3><div class="tw"><table><thead><tr><th>Data</th><th>Attività</th><th class="r">Durata</th><th class="r">Pot. media</th><th class="r">NP</th><th class="r">IF</th><th class="r">TSS</th><th class="r">FC media</th></tr></thead><tbody>' + rows.map(actRow).join('') + '</tbody></table></div>' + (list.length > 40 ? '<p class="small mut">Mostrate le 40 più recenti.</p>' : '') + '<p class="small mut">NP, IF e TSS compaiono solo con almeno 20 minuti di potenza misurata. NP: media mobile a 30 s elevata alla quarta, media, radice quarta. IF = NP / FTP. TSS = secondi × NP × IF / (FTP × 3600) × 100.</p></div>';
+    return h;
+  }
+  async function openDetail(id) {
+    const a = acts[id]; if (!a) return;
+    const c = W.classify(a);
+    const body = () => {
+      const an = ans[id], f = ftpFor(a), l = an && f ? W.load(an, f.ftp) : null;
+      let h = '<div class="row spread"><h2>' + esc(a.name) + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="small mut">' + dmy(a.start) + ' · ' + esc(a.sport) + ' · ' + (c.cat !== 'other' ? CATNAME[c.cat] : 'altro sport') + ' · importata da Strava</p>' + (c.note ? '<p class="note warn">' + c.note + '</p>' : '');
+      h += '<div class="kv"><div><span>Durata</span><b>' + dur(a.mov) + '</b></div><div><span>Distanza</span><b>' + (a.dist ? nf(a.dist / 1000, 1) + ' km' : '—') + '</b></div><div><span>Dislivello</span><b>' + (a.elev ? nf(a.elev) + ' m' : '—') + '</b></div>';
+      if (!an) return h + '</div><p class="status"><span class="dot run"></span>Leggo le serie temporali da Strava…</p>';
+      h += '<div><span>Pot. media</span><b>' + (an.hasPower ? nf(an.avgP) + ' W' : '—') + '</b></div><div><span>Pot. massima</span><b>' + (an.hasPower ? nf(an.maxP) + ' W' : '—') + '</b></div><div><span>NP</span><b>' + (an.np != null ? nf(an.np) + ' W' : '—') + '</b></div><div><span>IF</span><b>' + (l ? nf(l.IF, 2) : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (an.hasHr ? nf(an.avgHr) : '—') + '</b></div><div><span>FC massima</span><b>' + (an.hasHr ? nf(an.maxHr) : '—') + '</b></div><div><span>Cadenza</span><b>' + (an.avgCad ? nf(an.avgCad) : '—') + '</b></div></div>';
+      if (!an.hasPower) h += '<p class="note">Nessuna potenza misurata in questa attività: potenza, NP, IF e TSS restano vuoti, non vengono stimati.</p>';
+      else {
+        h += '<p class="small mut">Potenza presente per ' + nf(an.pCov * 100) + '% della durata' + (f ? ' · FTP usata: ' + f.ftp + ' W' + (f.exact ? '' : ' (attuale: a quella data non c’era una FTP registrata)') : ' · nessuna FTP impostata') + (an.np == null ? ' · NP non calcolata: meno di 20 minuti di dati' : '') + '.</p>';
+        h += '<h3>Curva di potenza</h3>' + chart(w => svgCurve(an.curve || {}, w, f && f.ftp));
+        if (f) h += '<h3>Zone di potenza</h3>' + zoneRows(W.powerZoneSecs(an.ph, f.ftp), W.PZ.map(z => z.name), [1, 2, 3, 4, 5, 6, 7]);
+      }
+      if (an.hasHr && P.hrz) h += '<h3>Zone cardiache</h3>' + zoneRows(W.hrZoneSecs(an.hh, P.hrz), HZN, HZC);
+      return h;
+    };
+    openModal(body());
+    if (!ans[id]) {
+      try { await analyzeOne(id); LS.set('watt.an', ans); }
+      catch (e) { if ($('#modal .box')) $('#modal .box').insertAdjacentHTML('beforeend', '<p class="note bad">' + esc(errMsg(e)) + '</p>'); return; }
+      if ($('#modal .box')) openModal(body());
+    }
+  }
+
+  /* ---------- Vista: Allenamenti ---------- */
+  const pct = p => Math.round(p * 100) + '%';
+  const eqB = (a, b) => a && b && a.d === b.d && a.p === b.p && a.k === b.k;
+  function ivLine(b, ftp) { return W.fmtTime(b.d) + ' al ' + pct(b.p) + (ftp ? ' · ' + W.targetWatts(ftp, b.p) + ' W' : ''); }
+  function intervals(blocks, ftp) {
+    let h = '', i = 0;
+    const row = (d, z, t) => '<div><span class="d">' + d + '</span><span class="zc z' + z + '">Z' + z + '</span><span>' + t + '</span></div>';
+    while (i < blocks.length) {
+      const b = blocks[i];
+      if (b.k === 'wu' || b.k === 'cd') {
+        let j = i, d = 0; while (j < blocks.length && blocks[j].k === b.k) { d += blocks[j].d; j++; }
+        h += row(W.fmtTime(d), W.zoneOfFrac(blocks[j - 1].p), (b.k === 'wu' ? 'Riscaldamento' : 'Defaticamento') + ' dal ' + pct(b.p) + ' al ' + pct(blocks[j - 1].p) + (ftp ? ' · ' + W.targetWatts(ftp, b.p) + '→' + W.targetWatts(ftp, blocks[j - 1].p) + ' W' : ''));
+        i = j; continue;
+      }
+      let r = 1;
+      if (blocks[i + 1] && blocks[i + 1].k === 'w' && !eqB(b, blocks[i + 1])) { while (eqB(blocks[i + 2 * r], b) && eqB(blocks[i + 2 * r + 1], blocks[i + 1])) r++; }
+      if (r >= 2) { h += row(r + ' ×', W.zoneOfFrac(b.p), ivLine(b, ftp) + ' + ' + ivLine(blocks[i + 1], ftp)); i += 2 * r; continue; }
+      h += row(W.fmtTime(b.d), W.zoneOfFrac(b.p), 'al ' + pct(b.p) + (ftp ? ' · ' + W.targetWatts(ftp, b.p) + ' W' : '') + ' · ' + W.blockLabel(b));
+      i++;
+    }
+    return '<div class="ivl">' + h + '</div>';
+  }
+  function noteBox(text, act, v) {
+    return '<div class="exb"><div class="row spread"><span class="exl">Nota per Strava</span><button class="btn sm" data-act="' + act + '" data-v="' + esc(v) + '">Copia nota</button></div><pre class="note-s">' + esc(text) + '</pre></div>';
+  }
+  function explain(w, ftp) {
+    const gi = W.GOALINFO[w.goal] || {};
+    return '<div class="ex"><div class="exb"><span class="exl">Cosa allena</span>' + esc(gi.what) + '</div><div class="exb"><span class="exl">Quando farlo</span>' + esc(gi.when) + '</div><div class="exb"><span class="exl">Come eseguirlo</span>' + esc(w.how) + '</div><div class="exb"><span class="exl">Intervalli</span>' + intervals(w.blocks, ftp) + '</div>' + noteBox(W.stravaNote(w, ftp), 'copyNote', w.id) + '</div>';
+  }
+  async function copyText(text, btn) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+    if (btn) {
+      const old = btn.textContent;
+      btn.textContent = ok ? 'Copiata' : 'Copia non riuscita: seleziona il testo';
+      setTimeout(() => { btn.textContent = old; }, 1800);
+      if (!ok) { const pre = btn.closest('.exb') && btn.closest('.exb').querySelector('pre'); if (pre) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } }
+    }
+  }
+  const goalName = id => (W.GOALS.find(g => g.id === id) || {}).name || '';
+  const byId = id => W.LIB.find(w => w.id === id);
+  function wkCard(w) {
+    const st = W.planStats(w.blocks), open = UI.open[w.id];
+    const peak = Math.max.apply(null, w.blocks.map(b => b.p));
+    return '<div class="wk' + (UI.sel === w.id ? ' sel' : '') + '"><div class="row spread"><h4>' + esc(w.name) + '</h4><span class="badge">' + esc(goalName(w.goal)) + '</span></div><p class="small mut">' + esc(w.desc) + '</p>' + wkSvg(w.blocks) +
+      '<div class="meta"><span><b>' + w.dur + '</b> min</span><span>picco <b>' + pct(peak) + '</b>' + (P.ftp ? ' · <b>' + W.targetWatts(P.ftp, peak) + '</b> W' : '') + '</span><span>IF previsto <b>' + nf(st.IF, 2) + '</b></span><span>TSS previsto <b>' + nf(st.tss) + '</b></span></div>' +
+      '<p class="why">' + esc(w.why) + '</p>' +
+      (open ? explain(w, P.ftp) : '') +
+      '<div class="row"><button class="btn pri sm" data-act="pick" data-v="' + w.id + '">Apri in consolle</button><button class="btn sm" data-act="toggle" data-v="' + w.id + '">' + (open ? 'Chiudi spiegazione' : 'Spiegazione e intervalli') + '</button><button class="btn sm ghost" data-act="plan" data-v="' + w.id + '">Programma</button></div></div>';
+  }
+  function vAllenamenti() {
+    const list = W.LIB.filter(w => w.dur === UI.dur && (UI.goal === 'all' || w.goal === UI.goal));
+    const plan = (P.plan || []).filter(p => p.date >= today() && byId(p.wid)).sort((a, b) => (a.date < b.date ? -1 : 1));
+    let h = '<div class="row spread"><h2>Allenamenti</h2><span class="small mut">' + W.LIB.length + ' workout · target calcolati su FTP ' + (P.ftp ? P.ftp + ' W' : 'non impostata') + '</span></div>';
+    if (!P.ftp) h += '<p class="note warn">FTP non impostata: vedi solo le percentuali. Inseriscila in <a href="#impostazioni">Impostazioni</a> per avere i watt.</p>';
+    h += '<div class="card"><h3>In programma</h3>' + (plan.length ? '<div class="tw"><table><tbody>' + plan.map(p => { const w = byId(p.wid); return '<tr><td>' + dmy(p.date) + (p.date === today() ? ' <span class="badge virt">oggi</span>' : '') + '</td><td class="name">' + esc(w.name) + '<span class="badge">' + esc(goalName(w.goal)) + '</span></td><td class="r">' + w.dur + ' min</td><td class="r"><button class="btn sm pri" data-act="pick" data-v="' + w.id + '">Apri</button> <button class="btn sm ghost" data-act="unplan" data-v="' + p.id + '">Rimuovi</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="empty">Niente in programma. Usa «Programma» su un workout per fissarlo a una data.</p>') + '</div>';
+    h += '<div class="card"><div class="row"><div class="seg" role="group" aria-label="Durata">' + [40, 60, 90].map(d => '<button class="' + (UI.dur === d ? 'on' : '') + '" data-act="dur" data-v="' + d + '">' + d + ' min</button>').join('') + '</div></div><div class="chips" role="group" aria-label="Obiettivo"><button class="chip' + (UI.goal === 'all' ? ' on' : '') + '" data-act="goal" data-v="all">Tutti</button>' + W.GOALS.map(g => '<button class="chip' + (UI.goal === g.id ? ' on' : '') + '" data-act="goal" data-v="' + g.id + '">' + g.name + '</button>').join('') + '</div></div>';
+    h += '<div class="wgrid">' + list.map(wkCard).join('') + '</div>';
+    h += '<p class="small mut">Altezza dei blocchi = intensità rispetto alla FTP (linea tratteggiata = 100%). IF e TSS «previsti» derivano dai soli target e non sono dati misurati.</p>';
+    return h;
+  }
+
+  /* ---------- Dispositivi Bluetooth ---------- */
+  const T = { state: 'off', name: '', power: null, cad: null, at: 0, hr: null, hrAt: 0, ergOk: false, cp: null, q: null, err: '', ergErr: '', dev: null };
+  const H = { state: 'off', name: '', hr: null, at: 0, err: '', dev: null };
+  function btState() {
+    if (!navigator.bluetooth || !navigator.bluetooth.requestDevice) return 'missing';
+    try { const fp = document.permissionsPolicy || document.featurePolicy; if (fp && typeof fp.allowsFeature === 'function' && !fp.allowsFeature('bluetooth')) return 'blocked'; } catch (e) { /* niente */ }
+    return 'ok';
+  }
+  const btOk = () => btState() === 'ok';
+  const SA_HINT = '<p class="note bad">Dentro claude.ai il browser blocca il Bluetooth, quindi da qui rullo e fascia non si collegano. Usa la <b>consolle autonoma</b>: la stessa consolle, fuori da claude.ai, con Bluetooth e file per Strava. Contiene già FTP, zone e programma.</p><div class="row"><button class="btn pri sm" data-act="getSA">Scarica la consolle autonoma</button></div><p class="small mut">Sul computer: aprila con Chrome o Edge. Su Android serve un indirizzo https: chiedi a Claude di pubblicarla.</p>';
+  function btErr(e) {
+    const n = e && e.name;
+    if (n === 'SecurityError') return SA ? 'Il browser non permette il Bluetooth da questa pagina: aprila da un indirizzo https o da un file sul computer.' : 'claude.ai blocca il Bluetooth: usa la consolle autonoma.';
+    if (n === 'NotAllowedError') return 'Permesso Bluetooth negato: consentilo nelle impostazioni del sito in Chrome.';
+    if (n === 'NotSupportedError') return 'Bluetooth web non supportato da questo browser.';
+    if (n === 'NetworkError') return 'Connessione al dispositivo non riuscita. Controlla che non sia già collegato a un’altra app.';
+    return 'Errore Bluetooth: ' + String((e && e.message) || n || 'sconosciuto').slice(0, 120);
+  }
+  const fresh = (at, ms) => at && Date.now() - at < (ms || 3500);
+  const livePower = () => (T.state === 'on' && T.power != null && fresh(T.at) ? T.power : null);
+  const liveCad = () => (T.state === 'on' && T.cad != null && fresh(T.at) ? T.cad : null);
+  const liveHr = () => (H.state === 'on' && H.hr && fresh(H.at, 6000) ? H.hr : (T.state === 'on' && T.hr && fresh(T.hrAt, 6000) ? T.hr : null));
+  function devChanged() { if (live) return; if (UI.view === 'consolle' || UI.view === 'impostazioni') render(); }
+  async function connectTrainer() {
+    if (!btOk()) { T.state = 'err'; T.err = 'Bluetooth web non disponibile in questo browser o in questa vista.'; return devChanged(); }
+    T.state = 'conn'; T.err = ''; T.ergErr = ''; devChanged();
+    try {
+      const d = await navigator.bluetooth.requestDevice({ filters: [{ services: [0x1826] }, { services: [0x1818] }], optionalServices: [0x1826, 0x1818] });
+      d.addEventListener('gattserverdisconnected', () => { T.state = 'lost'; T.power = null; T.cad = null; T.hr = null; T.cp = null; devChanged(); });
+      const g = await d.gatt.connect();
+      let ftms = null;
+      try { ftms = await g.getPrimaryService(0x1826); } catch (e) { ftms = null; }
+      T.ergOk = false; T.cp = null;
+      if (ftms) {
+        const ib = await ftms.getCharacteristic(0x2ad2);
+        ib.addEventListener('characteristicvaluechanged', ev => { const r = W.parseIndoorBike(ev.target.value); if (r.power != null) { T.power = r.power; T.at = Date.now(); } if (r.cadence != null) T.cad = r.cadence; if (r.hr) { T.hr = r.hr; T.hrAt = Date.now(); } });
+        await ib.startNotifications();
+        try {
+          const feat = await ftms.getCharacteristic(0x2acc);
+          T.ergOk = W.ftmsPowerTarget(await feat.readValue());
+          if (T.ergOk) {
+            const cp = await ftms.getCharacteristic(0x2ad9);
+            cp.addEventListener('characteristicvaluechanged', ev => { const v = ev.target.value; if (v.byteLength >= 3 && v.getUint8(0) === 0x80) T.ergErr = v.getUint8(2) === 1 ? '' : 'Il rullo ha rifiutato un comando (codice ' + v.getUint8(2) + ').'; });
+            await cp.startNotifications();
+            await cpWrite(cp, new Uint8Array([0x00]));
+            try { await cpWrite(cp, new Uint8Array([0x07])); } catch (e) { /* alcuni rulli non lo richiedono */ }
+            T.cp = cp;
+          }
+        } catch (e) { T.ergOk = false; T.cp = null; }
+      } else {
+        const ps = await g.getPrimaryService(0x1818);
+        const m = await ps.getCharacteristic(0x2a63);
+        m.addEventListener('characteristicvaluechanged', ev => { const r = W.parseCyclingPower(ev.target.value); if (r.power != null) { T.power = r.power; T.at = Date.now(); } });
+        await m.startNotifications();
+      }
+      T.dev = d; T.name = d.name || 'Rullo'; T.state = 'on';
+    } catch (e) {
+      if (e && e.name === 'NotFoundError') { T.state = 'off'; T.err = ''; } else { T.state = 'err'; T.err = btErr(e); }
+    }
+    devChanged();
+  }
+  function cpWrite(cp, bytes) { return cp.writeValueWithResponse ? cp.writeValueWithResponse(bytes) : cp.writeValue(bytes); }
+  function setErg(watts) {
+    if (!T.cp || T.state !== 'on' || !P.erg || watts == null) return;
+    const cp = T.cp;
+    T.q = (T.q || Promise.resolve()).then(() => cpWrite(cp, W.ergCommand(watts))).catch(() => { T.ergErr = 'Comando ERG non riuscito.'; });
+  }
+  async function connectHr() {
+    if (!btOk()) { H.state = 'err'; H.err = 'Bluetooth web non disponibile in questo browser o in questa vista.'; return devChanged(); }
+    H.state = 'conn'; H.err = ''; devChanged();
+    try {
+      const d = await navigator.bluetooth.requestDevice({ filters: [{ services: [0x180d] }] });
+      d.addEventListener('gattserverdisconnected', () => { H.state = 'lost'; H.hr = null; devChanged(); });
+      const g = await d.gatt.connect();
+      const s = await g.getPrimaryService(0x180d);
+      const c = await s.getCharacteristic(0x2a37);
+      c.addEventListener('characteristicvaluechanged', ev => { const r = W.parseHeartRate(ev.target.value); if (r.hr) { H.hr = r.hr; H.at = Date.now(); } });
+      await c.startNotifications();
+      H.dev = d; H.name = d.name || 'Sensore FC'; H.state = 'on';
+    } catch (e) {
+      if (e && e.name === 'NotFoundError') { H.state = 'off'; H.err = ''; } else { H.state = 'err'; H.err = btErr(e); }
+    }
+    devChanged();
+  }
+  function disconnect(x) { try { if (x.dev && x.dev.gatt && x.dev.gatt.connected) x.dev.gatt.disconnect(); } catch (e) { /* niente */ } x.state = 'off'; devChanged(); }
+  const STN = { off: 'Non collegato', conn: 'Collegamento…', on: 'Collegato', lost: 'Segnale perso', err: 'Errore' };
+  function devLine(x, kind) {
+    const cls = x.state === 'on' ? 'ok' : (x.state === 'lost' || x.state === 'err') ? 'err' : x.state === 'conn' ? 'run' : '';
+    let h = '<div class="row spread"><div class="status"><span class="dot ' + cls + '"></span><span><b style="color:var(--fg)">' + (kind === 't' ? 'Rullo' : 'Fascia / orologio FC') + '</b> · ' + STN[x.state] + (x.state === 'on' || x.state === 'lost' ? ' · ' + esc(x.name) : '') + '</span></div><div class="row">';
+    if (x.state === 'on') h += '<button class="btn sm ghost" data-act="' + (kind === 't' ? 'btOffT' : 'btOffH') + '">Scollega</button>';
+    else h += '<button class="btn sm" data-act="' + (kind === 't' ? 'btT' : 'btH') + '"' + (x.state === 'conn' ? ' disabled' : '') + '>' + (x.state === 'lost' ? 'Ricollega' : 'Collega') + '</button>';
+    h += '</div></div>';
+    if (x.err) h += '<p class="note bad">' + esc(x.err) + '</p>';
+    if (kind === 't' && x.state === 'on') h += '<p class="small mut">' + (x.ergOk ? 'Controllo ERG disponibile (FTMS).' : 'Questo dispositivo trasmette la potenza ma non accetta il controllo ERG: imposta tu la resistenza.') + (x.ergErr ? ' ' + esc(x.ergErr) : '') + '</p>';
+    return h;
+  }
+  function devicesBlock() {
+    let h = '';
+    if (!btOk()) h += SA ? '<p class="note bad">Bluetooth web non disponibile. Serve Chrome o Edge (non Firefox né Safari), con la pagina aperta da un indirizzo https o da un file sul computer. Senza sensori la consolle funziona da timer guidato con potenza e FC «n/d».</p>' : SA_HINT;
+    if (P.mode === 'rivo') h += devLine(T, 't');
+    else h += '<p class="small mut">Cyclette: allenamento guidato con timer e target. La potenza effettiva resta «n/d»: il target non viene mai registrato come potenza prodotta.</p>';
+    h += devLine(H, 'h');
+    return h;
+  }
+
+  /* ---------- Vista: Consolle (a riposo) ---------- */
+  function vConsolle() {
+    const w = UI.sel ? byId(UI.sel) : null, saved = LS.get('watt.live');
+    let h = '<div class="row spread"><h2>Consolle</h2><div class="seg" role="group" aria-label="Attrezzo"><button class="' + (P.mode === 'cyclette' ? 'on' : '') + '" data-act="mode" data-v="cyclette">Cyclette</button><button class="' + (P.mode === 'rivo' ? 'on' : '') + '" data-act="mode" data-v="rivo">Elite Rivo</button></div></div>';
+    if (saved && saved.wid && byId(saved.wid) && Date.now() - (saved.lastSeen || 0) < 12 * 3600e3) h += '<div class="card" style="border-color:var(--warn)"><h3>Sessione interrotta</h3><p>«' + esc(byId(saved.wid).name) + '» si è interrotta alle ' + hm(saved.lastSeen) + '. Riprende in pausa dal punto raggiunto: il tempo passato da allora non viene contato e non vengono aggiunti campioni.</p><div class="row"><button class="btn pri" data-act="restore">Riprendi</button><button class="btn ghost" data-act="dropLive">Scarta</button></div></div>';
+    if (w) {
+      const st = W.planStats(w.blocks);
+      h += '<div class="card"><div class="row spread"><h3>' + esc(goalName(w.goal)) + ' · ' + w.dur + ' min</h3><a href="#allenamenti" class="small">Cambia workout</a></div><div class="row spread"><h2 style="text-transform:none">' + esc(w.name) + '</h2></div><p class="mut">' + esc(w.desc) + '</p><p class="why">' + esc(w.why) + '</p>' + wkSvg(w.blocks) + '<div class="kv"><div><span>FTP della sessione</span><b>' + (P.ftp ? P.ftp + ' W' : '—') + '</b></div><div><span>IF previsto</span><b>' + nf(st.IF, 2) + '</b></div><div><span>TSS previsto</span><b>' + nf(st.tss) + '</b></div></div>' + explain(w, P.ftp) + '</div>';
+    } else h += '<div class="card"><h3>Nessun workout selezionato</h3><p>Scegli un allenamento dalla libreria, poi torna qui per avviarlo.</p><div><a class="btn pri" href="#allenamenti" style="display:inline-flex;align-items:center;text-decoration:none">Vai agli allenamenti</a></div></div>';
+    h += '<div class="card"><h3>Dispositivi</h3>' + devicesBlock() + '<div class="row">' + (P.mode === 'rivo' ? '<label class="check"><input type="checkbox" id="opt-erg" data-chg="erg"' + (P.erg ? ' checked' : '') + '>Controllo ERG (il rullo segue il target)</label>' : '') + '<label class="check"><input type="checkbox" id="opt-voice" data-chg="voice"' + (P.voice ? ' checked' : '') + '>Avvisi vocali</label></div></div>';
+    h += '<div><button class="btn pri" data-act="start" style="min-height:56px;font-size:18px;padding:0 28px"' + (w && P.ftp ? '' : ' disabled') + '>Avvia allenamento</button>' + (w && !P.ftp ? ' <span class="small mut">Imposta prima la FTP in Impostazioni.</span>' : '') + '</div>';
+    const ss = P.sessions || [];
+    h += '<div class="card"><h3>Sessioni registrate in WATT (' + ss.length + ')</h3>' + (ss.length ? '<div class="tw"><table><thead><tr><th>Data</th><th>Workout</th><th class="r">Svolto</th><th class="r">Completato</th><th class="r">FTP</th><th class="r">Pot. media</th><th class="r">NP</th><th class="r">FC media</th><th></th></tr></thead><tbody>' + ss.slice(0, 30).map(s => '<tr><td>' + dmy(s.date) + '</td><td class="name">' + esc(s.name) + '<span class="badge">' + (s.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + '</span></td><td class="r">' + W.fmtTime(s.elapsed) + '</td><td class="r">' + nf(s.pct) + '%</td><td class="r">' + s.ftp + ' W</td><td class="r">' + (s.avgP != null ? nf(s.avgP) + ' W' : 'n/d') + '</td><td class="r">' + (s.np != null ? nf(s.np) + ' W' : '—') + '</td><td class="r">' + (s.avgHr != null ? nf(s.avgHr) : 'n/d') + '</td><td class="r">' + (s.stravaId ? '<a class="btn sm" style="display:inline-flex;align-items:center;text-decoration:none" href="https://www.strava.com/activities/' + esc(s.stravaId) + '" target="_blank" rel="noopener">Su Strava</a> ' : hasSmp(s.id) && swOn() ? '<button class="btn sm pri" data-act="upload" data-v="' + esc(s.id) + '"' + (s.upState === 'run' ? ' disabled' : '') + '>Carica</button> ' : '') + (hasSmp(s.id) ? '<button class="btn sm" data-act="tcx" data-v="' + esc(s.id) + '">File .tcx</button> ' : '') + '<button class="btn sm" data-act="copySess" data-v="' + esc(s.id) + '">Nota</button> <button class="btn sm ghost" data-act="delSession" data-v="' + esc(s.id) + '">Elimina</button></td></tr>').join('') + '</tbody></table></div>' : '<p class="empty">Ancora nessuna sessione.</p>') + '<p class="small mut">Qui ci sono solo i dati rilevati dai sensori durante la sessione. Restano separati dalle attività importate da Strava e non entrano nei totali della Dashboard, così la stessa pedalata non viene contata due volte. Per portarle su Strava usa «File .tcx» e «Nota».</p></div>';
+    return h;
+  }
+
+  /* ---------- Sessione dal vivo ---------- */
+  let tickId = null, wake = null, lastBeat = 0, lastSave = 0;
+  function say(t) {
+    if (!P.voice) return;
+    try { if (!('speechSynthesis' in window)) return; const u = new SpeechSynthesisUtterance(t); u.lang = 'it-IT'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) { /* voce non disponibile */ }
+  }
+  async function wakeOn() { try { if (navigator.wakeLock) { wake = await navigator.wakeLock.request('screen'); } } catch (e) { wake = null; } }
+  function wakeOff() { try { if (wake) wake.release(); } catch (e) { /* niente */ } wake = null; }
+  function spokenDur(sec) { const m = Math.floor(sec / 60), s = sec % 60; return (m ? m + (m === 1 ? ' minuto' : ' minuti') : '') + (m && s ? ' e ' : '') + (s ? s + ' secondi' : ''); }
+  function buildConsole() {
+    const L = live, el = $('#console');
+    el.innerHTML = '<div class="cs-top"><b>' + esc(L.wk.name) + '</b><div class="cs-conn" id="cs-conn"></div></div>' +
+      '<div class="cs-main">' +
+      '<div class="cs-cell cs-tg"><label>Target</label><b class="num" id="cs-tw">—</b><div class="s" id="cs-tp"></div></div>' +
+      '<div class="cs-cell cs-pw"><label>Potenza effettiva</label><b class="num" id="cs-pw">n/d</b><div class="s" id="cs-cad"></div></div>' +
+      '<div class="cs-cell cs-it" id="cs-itc"><label id="cs-il">Intervallo</label><b class="num" id="cs-it">0:00</b><div class="s" id="cs-in"></div></div>' +
+      '<div class="cs-cell cs-hr"><label>Frequenza cardiaca</label><b class="num" id="cs-hr">n/d</b><div class="s" id="cs-hz"></div></div>' +
+      '<div class="cs-cell cs-zn"><label>Zona di potenza</label><div class="zpair"><div class="zbox"><span>Target</span><b class="num" id="cs-zt">—</b></div><div class="zbox"><span>Effettiva</span><b class="num na" id="cs-ze">n/d</b></div></div></div>' +
+      '</div>' +
+      '<div class="cs-prog"><div class="bar"><i id="cs-bar"></i></div><div class="r"><span id="cs-el">0:00</span><b id="cs-pc">0%</b><span id="cs-rm"></span></div></div>' +
+      '<div class="cs-chart">' + wkSvg(L.wk.blocks).replace('class="wsvg"', '') + '<div class="cs-done" id="cs-done"></div><div class="cs-cur" id="cs-cur"></div></div>' +
+      '<div class="cs-next" id="cs-next"></div>' +
+      '<div class="cs-ctl"><button class="btn pri" id="cs-pause" data-act="pause">Pausa</button><button class="btn danger" data-act="askEnd">Termina</button><button class="btn" data-act="fs" aria-label="Schermo intero">⛶</button></div>' +
+      '<div class="cs-msg" id="cs-msg"></div>' +
+      '<div class="cs-confirm" id="cs-confirm" hidden><div class="box"><h2>Terminare la sessione?</h2><p class="mut">Il lavoro svolto finora viene salvato tra le sessioni registrate.</p><button class="btn pri" data-act="keep">Continua l’allenamento</button><button class="btn" data-act="endSave">Termina e salva</button><button class="btn danger" data-act="endDrop">Termina senza salvare</button></div></div>';
+    el.hidden = false;
+  }
+  const setT = (id, t) => { const e = document.getElementById(id); if (e && e.textContent !== t) e.textContent = t; };
+  function zBox(id, z) { const e = document.getElementById(id); if (!e) return; const c = 'num' + (z ? ' z' + z : ' na'); if (e.className !== c) e.className = c; setT(id, z ? 'Z' + z : 'n/d'); }
+  function tick() {
+    const L = live; if (!L) return;
+    const sec = L.timer.elapsedMs() / 1000, loc = W.locate(L.wk.blocks, sec), T0 = loc.total;
+    if (loc.done) { finish(true, true); return; }
+    const b = L.wk.blocks[loc.idx], tw = W.targetWatts(L.ftp, b.p);
+    if (loc.idx !== L.lastIdx) {
+      const prev = L.wk.blocks[L.lastIdx];
+      if (L.lastIdx >= 0 && !(prev && prev.k === b.k && b.k !== 'w')) say(W.blockLabel(b) + ', ' + spokenDur(b.k === 'w' ? b.d : Math.round(loc.left)) + ', ' + tw + ' watt');
+      L.lastIdx = loc.idx;
+      setErg(tw);
+    }
+    const pw = L.mode === 'rivo' ? livePower() : null, cad = L.mode === 'rivo' ? liveCad() : null, hr = liveHr();
+    const whole = Math.floor(sec);
+    if (L.timer.running() && whole > L.lastSec) {
+      L.lastSec = whole;
+      if (pw != null || hr != null) { L.t.push(whole); L.ts.push(Date.now()); L.w.push(pw); L.h.push(hr); L.c.push(cad); }
+    }
+    setT('cs-tw', String(tw)); setT('cs-tp', pct(b.p) + ' FTP · FTP ' + L.ftp + ' W');
+    const pe = document.getElementById('cs-pw');
+    if (pe) { const c = 'num' + (pw == null ? ' na' : ''); if (pe.className !== c) pe.className = c; }
+    setT('cs-pw', pw == null ? 'n/d' : String(Math.round(pw)));
+    setT('cs-cad', L.mode !== 'rivo' ? 'nessun sensore di potenza' : (T.state === 'lost' ? 'segnale del rullo perso' : T.state !== 'on' ? 'rullo non collegato' : cad != null ? Math.round(cad) + ' rpm' : pw == null ? 'in attesa di dati' : ''));
+    setT('cs-it', W.fmtTime(Math.ceil(loc.left))); setT('cs-il', W.blockLabel(b) + ' · resta'); setT('cs-in', 'intervallo ' + (loc.idx + 1) + ' di ' + L.wk.blocks.length + ' · ' + W.fmtTime(b.d));
+    const itc = document.getElementById('cs-itc'); if (itc) itc.style.borderTopColor = 'var(--z' + W.zoneOfFrac(b.p) + ')';
+    const he = document.getElementById('cs-hr');
+    if (he) { const c = 'num' + (hr == null ? ' na' : ''); if (he.className !== c) he.className = c; }
+    setT('cs-hr', hr == null ? 'n/d' : String(hr));
+    const hz = W.zoneOfHr(hr, P.hrz);
+    setT('cs-hz', hr == null ? (H.state === 'lost' ? 'segnale FC perso' : 'nessun sensore FC') : (hz ? 'Z' + hz + ' · ' + HZN[hz - 1] : 'bpm'));
+    zBox('cs-zt', W.zoneOfFrac(b.p)); zBox('cs-ze', W.zoneOfWatts(pw, L.ftp));
+    const pc = (sec / T0) * 100;
+    const bar = document.getElementById('cs-bar'); if (bar) bar.style.width = pc.toFixed(2) + '%';
+    const cur = document.getElementById('cs-cur'); if (cur) cur.style.left = pc.toFixed(2) + '%';
+    const dn = document.getElementById('cs-done'); if (dn) dn.style.width = pc.toFixed(2) + '%';
+    setT('cs-pc', Math.floor(pc) + '%'); setT('cs-el', 'trascorso ' + W.fmtTime(sec)); setT('cs-rm', 'restano ' + W.fmtTime(Math.ceil(T0 - sec)));
+    const nx = L.wk.blocks[loc.idx + 1], ne = document.getElementById('cs-next');
+    if (ne) { const t = nx ? 'Prossimo: <b>' + W.blockLabel(nx) + '</b> · ' + W.fmtTime(nx.d) + ' al ' + pct(nx.p) + ' · <b>' + W.targetWatts(L.ftp, nx.p) + ' W</b>' : 'Ultimo intervallo'; if (ne.dataset.k !== String(loc.idx)) { ne.dataset.k = String(loc.idx); ne.innerHTML = t; } }
+    const paused = !L.timer.running();
+    $('#console').classList.toggle('paused', paused);
+    setT('cs-pause', paused ? 'Riprendi' : 'Pausa');
+    const cn = [L.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette'];
+    if (L.mode === 'rivo') cn.push(T.state === 'on' ? (T.cp && P.erg ? 'ERG attivo' : 'rullo collegato') : STN[T.state].toLowerCase());
+    setT('cs-conn', cn.join(' · '));
+    let msg = L.note || '';
+    if (paused) msg = (msg ? msg + ' ' : '') + 'In pausa.';
+    if (L.mode === 'rivo' && T.state === 'lost') msg = 'Segnale del rullo perso: la potenza non viene registrata finché non lo ricolleghi dalla Consolle. ' + msg;
+    if (T.ergErr && L.mode === 'rivo') msg = T.ergErr + ' ' + msg;
+    setT('cs-msg', msg);
+    const now = Date.now();
+    if (now - lastBeat > 2000) {
+      lastBeat = now;
+      const o = { wid: L.wk.id, ftp: L.ftp, mode: L.mode, timer: L.timer.toJSON(), lastSeen: now, date: L.date };
+      if (now - lastSave > 30000) { lastSave = now; o.t = L.t; o.ts = L.ts; o.w = L.w; o.h = L.h; o.c = L.c; L.savedSamples = { t: L.t.length }; }
+      else { const old = LS.get('watt.live'); if (old && old.t) { o.t = old.t; o.ts = old.ts; o.w = old.w; o.h = old.h; o.c = old.c; } }
+      LS.set('watt.live', o);
+    }
+  }
+  function startSession(restore) {
+    if (live) return;
+    let L;
+    if (restore) {
+      const s = LS.get('watt.live'); if (!s || !byId(s.wid)) return;
+      const tm = W.Timer.fromJSON(s.timer);
+      if (tm.pausedAt == null && tm.endAt == null) tm.pause(s.lastSeen);
+      L = { wk: byId(s.wid), ftp: s.ftp, mode: s.mode, timer: tm, t: s.t || [], ts: s.ts || [], w: s.w || [], h: s.h || [], c: s.c || [], lastSec: Math.floor(tm.elapsedMs() / 1000), lastIdx: -1, date: s.date || today(), note: 'Sessione ripristinata: l’interruzione delle ' + hm(s.lastSeen) + ' è stata trattata come pausa.' };
+    } else {
+      const wk = byId(UI.sel); if (!wk || !P.ftp) return;
+      L = { wk: wk, ftp: P.ftp, mode: P.mode, timer: new W.Timer(), t: [], ts: [], w: [], h: [], c: [], lastSec: -1, lastIdx: -1, date: today(), note: '' };
+      L.timer.start();
+    }
+    live = L; lastBeat = 0; lastSave = Date.now();
+    buildConsole();
+    if (!restore) { wakeOn(); say('Inizio allenamento: ' + L.wk.name + '. ' + W.blockLabel(L.wk.blocks[0]) + '.'); L.lastIdx = 0; setErg(W.targetWatts(L.ftp, L.wk.blocks[0].p)); }
+    tick();
+    tickId = setInterval(tick, 250);
+  }
+  function finish(saveIt, completed) {
+    const L = live; if (!L) return;
+    L.timer.stop();
+    clearInterval(tickId); tickId = null;
+    wakeOff();
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { /* niente */ }
+    const elapsed = Math.round(L.timer.elapsedMs() / 1000), total = W.total(L.wk.blocks);
+    live = null;
+    LS.del('watt.live');
+    $('#console').hidden = true; $('#console').innerHTML = '';
+    let rec = null;
+    if (saveIt && elapsed >= 60) {
+      const an = W.analyze({ time: L.t, watts: L.w.some(v => v != null) ? L.w : null, heart_rate: L.h.some(v => v != null) ? L.h : null, cadence: L.c.some(v => v != null) ? L.c : null });
+      rec = { id: 's' + L.timer.startAt, date: L.date, wid: L.wk.id, name: L.wk.name, mode: L.mode, ftp: L.ftp, planned: total, elapsed: elapsed, pct: Math.min(100, (elapsed / total) * 100), avgP: an.hasPower ? Math.round(an.avgP) : null, maxP: an.hasPower ? an.maxP : null, np: an.np != null ? Math.round(an.np) : null, pSec: an.pSec || 0, avgHr: an.hasHr ? Math.round(an.avgHr) : null, maxHr: an.hasHr ? an.maxHr : null, hSec: an.hSec || 0, curve: an.curve || null };
+      if (L.ts.length) LS.set('watt.smp.' + rec.id, { start: L.timer.startAt, ts: L.ts, w: L.w, h: L.h, c: L.c });
+      P.sessions = [rec].concat(P.sessions || []).slice(0, 150);
+      save();
+    }
+    if (completed) say('Allenamento concluso.');
+    UI.view = 'consolle'; render();
+    if (rec) {
+      rec.completed = !!completed;
+      openModal(doneBody(rec));
+      if (P.autoUp && swOn() && hasSmp(rec.id)) swUpload(rec.id);
+    } else if (saveIt) openModal('<div class="row spread"><h2>Sessione non salvata</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>È durata meno di un minuto.</p>');
+  }
+  function doneBody(rec) {
+      const completed = rec.completed;
+      const l = rec.np != null ? W.load({ np: rec.np, pSec: rec.pSec }, rec.ftp) : null;
+      return ('<div class="row spread"><h2>' + (completed ? 'Allenamento concluso' : 'Sessione terminata') + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="mut">' + esc(rec.name) + ' · ' + (rec.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + ' · FTP ' + rec.ftp + ' W</p><div class="kv"><div><span>Svolto</span><b>' + W.fmtTime(rec.elapsed) + '</b></div><div><span>Completato</span><b>' + nf(rec.pct) + '%</b></div><div><span>Pot. media</span><b>' + (rec.avgP != null ? rec.avgP + ' W' : 'n/d') + '</b></div><div><span>NP</span><b>' + (rec.np != null ? rec.np + ' W' : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (rec.avgHr != null ? rec.avgHr : 'n/d') + '</b></div></div><p class="small mut">' + (rec.avgP == null ? 'Nessun sensore di potenza collegato: la potenza effettiva non è stata registrata e il target non la sostituisce. ' : 'Potenza registrata per ' + W.fmtTime(rec.pSec) + '. ') + 'La sessione è salvata in WATT.</p>' + sessActions(rec));
+  }
+
+  /* ---------- Portare una sessione su Strava ---------- */
+  const hasSmp = id => { const m = LS.get('watt.smp.' + id); return !!(m && m.ts && m.ts.length); };
+  const sessNote = rec => { const w = byId(rec.wid); return w ? W.stravaNote(w, rec.ftp) : rec.name; };
+  function sessActions(rec) {
+    const smp = hasSmp(rec.id);
+    const direct = smp && swOn() ? '<div class="row"><button class="btn pri" data-act="upload" data-v="' + esc(rec.id) + '"' + (rec.stravaId || rec.upState === 'run' ? ' disabled' : '') + '>' + (rec.stravaId ? 'Già su Strava' : 'Carica su Strava') + '</button><span class="small" id="up-' + esc(rec.id) + '">' + upStatus(rec) + '</span></div>' : '';
+    return '<h3>Portala su Strava</h3>' + direct +
+      (smp ? '<div class="row"><button class="btn' + (direct ? '' : ' pri') + '" data-act="tcx" data-v="' + esc(rec.id) + '">Scarica file per Strava (.tcx)</button></div><p class="small mut">Il file contiene solo ciò che i sensori hanno misurato (' + [rec.avgP != null ? 'potenza' : '', rec.avgHr != null ? 'FC' : ''].filter(Boolean).join(' e ') + '), mai i target. ' + (swOn() ? 'Con «Carica su Strava» va direttamente sul tuo profilo (una sola volta: Strava scarta i doppioni).' : 'Caricalo su strava.com/upload/select, oppure collega Strava in Impostazioni per caricarlo con un tocco.') + ' Alla sincronizzazione successiva WATT lo reimporta e lo conta nel carico.</p>'
+        : '<p class="small mut">Nessun dato misurato (né potenza né FC): Strava non accetta un file vuoto. Aggiungi l’attività a mano dall’app Strava (+ → Aggiungi attività manuale) e incolla la nota.</p>') +
+      noteBox(sessNote(rec), 'copySess', rec.id);
+  }
+  function downloadTcx(id) {
+    const rec = (P.sessions || []).find(x => x.id === id), smp = LS.get('watt.smp.' + id);
+    if (!rec || !smp) return;
+    const xml = W.tcx({ start: smp.start, elapsed: rec.elapsed, ts: smp.ts, w: smp.w, h: smp.h, c: smp.c, notes: sessNote(rec) });
+    const name = 'WATT-' + rec.date + '-' + rec.name.replace(/[^\w]+/g, '-').replace(/^-|-$/g, '') + '.tcx';
+    if (!SA) { openModal('<div class="row spread"><h2>File non scaricabile qui</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>claude.ai non permette di scaricare file .tcx. Usa la consolle autonoma (Consolle → Dispositivi) per allenarti con i sensori: è lì che il file si scarica.</p>'); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([xml], { type: 'application/vnd.garmin.tcx+xml' }));
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+  }
+
+  /* ---------- Caricamento diretto su Strava (solo consolle autonoma, su https) ----------
+     Il Client Secret lo inserisce Francesco e resta solo nel suo browser: non è nel codice, negli URL o nei log. */
+  const CLIENT_ID = '249980';
+  const SAPI = 'https://www.strava.com/api/v3';
+  let SW = LS.get('watt.sw') || null;
+  const swOn = () => !!(SW && SW.refresh);
+  const canOAuth = () => SA && location.protocol === 'https:';
+  const redirectUri = () => location.origin + location.pathname;
+  function swErr(e) {
+    if (e && e.name === 'TypeError') return 'Strava non ha risposto alla pagina (rete assente o richiesta bloccata dal browser).';
+    return (e && e.message) || 'errore sconosciuto';
+  }
+  async function swToken(form) {
+    let r;
+    try { r = await fetch(SAPI + '/oauth/token', { method: 'POST', body: form }); }
+    catch (e) { throw new Error('Strava non permette lo scambio del codice direttamente dal browser. Serve un piccolo server: chiedilo a Claude.'); }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(r.status === 400 || r.status === 401 ? 'Strava ha rifiutato le credenziali: controlla il Client Secret.' : 'Strava ha risposto ' + r.status + '.');
+    return j;
+  }
+  async function swConnectFinish() {
+    const q = new URLSearchParams(location.search);
+    if (!q.has('code') && !q.has('error')) return;
+    const st = LS.get('watt.swstate');
+    history.replaceState(null, '', location.pathname + location.hash);
+    LS.del('watt.swstate');
+    const pend = LS.get('watt.swpend');
+    LS.del('watt.swpend');
+    if (q.get('error')) { UI.swMsg = 'Autorizzazione Strava annullata.'; return; }
+    if (!st || q.get('state') !== st || !pend) { UI.swMsg = 'Risposta di Strava non valida: riprova a collegare.'; return; }
+    if (!/activity:write/.test(q.get('scope') || '')) { UI.swMsg = 'Serve il permesso di caricare attività: riprova e lascia spuntata la voce per il caricamento.'; return; }
+    try {
+      const f = new FormData();
+      f.append('client_id', CLIENT_ID); f.append('client_secret', pend); f.append('code', q.get('code')); f.append('grant_type', 'authorization_code');
+      const j = await swToken(f);
+      SW = { secret: pend, access: j.access_token, refresh: j.refresh_token, exp: j.expires_at, who: j.athlete ? ((j.athlete.firstname || '') + ' ' + (j.athlete.lastname || '')).trim() : '' };
+      LS.set('watt.sw', SW);
+      UI.swMsg = '';
+    } catch (e) { UI.swMsg = swErr(e); }
+  }
+  async function swAccess() {
+    if (!swOn()) throw new Error('Strava non collegato.');
+    if (SW.exp && SW.exp * 1000 > Date.now() + 120000) return SW.access;
+    const f = new FormData();
+    f.append('client_id', CLIENT_ID); f.append('client_secret', SW.secret); f.append('grant_type', 'refresh_token'); f.append('refresh_token', SW.refresh);
+    const j = await swToken(f);
+    SW.access = j.access_token; SW.refresh = j.refresh_token || SW.refresh; SW.exp = j.expires_at;
+    LS.set('watt.sw', SW);
+    return SW.access;
+  }
+  function swStart() {
+    const e = document.getElementById('in-secret'), sec = e && e.value.trim();
+    if (!sec || !/^[0-9a-f]{40}$/i.test(sec)) return openModal('<div class="row spread"><h2>Client Secret non valido</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Copialo da strava.com/settings/api: sono 40 caratteri tra cifre e lettere a–f.</p>');
+    const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    LS.set('watt.swstate', st); LS.set('watt.swpend', sec);
+    location.href = 'https://www.strava.com/oauth/authorize?client_id=' + CLIENT_ID + '&response_type=code&approval_prompt=auto&scope=read,activity:write&redirect_uri=' + encodeURIComponent(redirectUri()) + '&state=' + st;
+  }
+  async function swUpload(id, btn) {
+    const rec = (P.sessions || []).find(x => x.id === id), smp = LS.get('watt.smp.' + id);
+    if (!rec || !smp) return;
+    if (rec.stravaId) return;
+    const say2 = t => { const el = document.getElementById('up-' + id); if (el) el.textContent = t; };
+    if (btn) btn.disabled = true;
+    rec.upState = 'run'; say2('Caricamento su Strava…');
+    try {
+      const tok = await swAccess();
+      const xml = W.tcx({ start: smp.start, elapsed: rec.elapsed, ts: smp.ts, w: smp.w, h: smp.h, c: smp.c, notes: '' });
+      const f = new FormData();
+      f.append('file', new Blob([xml], { type: 'application/xml' }), 'watt-' + rec.id + '.tcx');
+      f.append('data_type', 'tcx'); f.append('name', rec.name); f.append('description', sessNote(rec));
+      f.append('trainer', '1'); f.append('sport_type', 'Ride'); f.append('external_id', 'watt-' + rec.id);
+      const r = await fetch(SAPI + '/uploads', { method: 'POST', headers: { Authorization: 'Bearer ' + tok }, body: f });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 401) { SW = null; LS.del('watt.sw'); throw new Error('Autorizzazione Strava scaduta o revocata: ricollega Strava in Impostazioni.'); }
+      if (r.status === 429) throw new Error('Limite di richieste Strava raggiunto: riprova tra 15 minuti.');
+      if (!r.ok) throw new Error(j.error || ('Strava ha risposto ' + r.status));
+      const upId = j.id_str || String(j.id);
+      for (let i = 0; i < 40; i++) {
+        await sleep(1500);
+        const g = await fetch(SAPI + '/uploads/' + upId, { headers: { Authorization: 'Bearer ' + tok } });
+        const u = await g.json().catch(() => ({}));
+        if (u.activity_id) { rec.stravaId = String(u.activity_id_str || u.activity_id); break; }
+        if (u.error) {
+          const dup = /duplicate/i.test(u.error) && (u.error.match(/activities\/(\d+)/) || [])[1];
+          if (dup) { rec.stravaId = dup; break; }
+          throw new Error(String(u.error).replace(/<[^>]+>/g, ''));
+        }
+      }
+      if (!rec.stravaId) throw new Error('Strava sta ancora elaborando: controlla tra poco sull’app.');
+      rec.upState = 'ok'; rec.upErr = null; save();
+    } catch (e) { rec.upState = 'err'; rec.upErr = swErr(e); save(); }
+    if ($('#modal .box') && document.getElementById('up-' + id)) openModal(doneBody(rec));
+    if (UI.view === 'consolle' && !live) render();
+  }
+  function upStatus(rec) {
+    if (rec.stravaId) return '<span class="up">Su Strava</span> · <a href="https://www.strava.com/activities/' + esc(rec.stravaId) + '" target="_blank" rel="noopener">apri</a>';
+    if (rec.upState === 'run') return 'Caricamento…';
+    if (rec.upState === 'err') return '<span class="down">' + esc(rec.upErr || 'errore') + '</span>';
+    return '';
+  }
+
+  /* ---------- Consolle autonoma: la stessa app in un unico file, fuori da claude.ai ---------- */
+  function buildStandalone(css, core, app, seed) {
+    const js = t => t.replace(/<\/script/gi, '<\\/script');
+    const seedJs = JSON.stringify(seed).replace(/</g, '\\u003c');
+    return '<!DOCTYPE html>\n<html lang="it">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>WATT · consolle</title>\n' +
+      '<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Condensed:wght@500;600;700&amp;display=swap" rel="stylesheet">\n<style>\n' + css.replace(/<\/style/gi, '') + '\n</style>\n</head>\n<body>\n' +
+      '<div class="app">\n  <header class="top">\n    <div class="brand">WATT</div>\n    <nav class="tabs" aria-label="Sezioni">\n      <a href="#allenamenti">Allenamenti</a>\n      <a href="#consolle">Consolle</a>\n      <a href="#impostazioni">Impostazioni</a>\n    </nav>\n  </header>\n  <main id="view"></main>\n</div>\n<div id="console" class="cs" hidden></div>\n<div id="modal" class="modal" hidden></div>\n<div id="tip" class="tip" hidden></div>\n' +
+      '<script>window.WATT_STANDALONE = true; window.WATT_SEED = ' + seedJs + ';<\/script>\n<script>\n' + js(core) + '\n<\/script>\n<script>\n' + js(app) + '\n<\/script>\n</body>\n</html>\n';
+  }
+  window.__wattBuild = buildStandalone;
+  async function getStandalone() {
+    try {
+      const dl = await use('downloads');
+      if (!dl) throw { code: 'unavailable' };
+      const files = await Promise.all(['style.css', 'core.js', 'app.js'].map(f => fetch(f).then(r => { if (!r.ok) throw { code: 'fetch' }; return r.text(); })));
+      const seed = { ftp: P.ftp, ftpHist: P.ftpHist, hrz: P.hrz, hrSrc: P.hrSrc, restHr: P.restHr, lthr: P.lthr, mode: P.mode, voice: P.voice, erg: P.erg, plan: P.plan };
+      await dl.save({ filename: 'watt-consolle.html', data: buildStandalone(files[0], files[1], files[2], seed) });
+    } catch (e) {
+      if (e && e.code === 'declined') return;
+      openModal('<div class="row spread"><h2>Download non riuscito</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Questa vista non permette di scaricare la consolle (' + esc((e && e.code) || 'errore') + '). Chiedila a Claude in chat: te la invia come file.</p>');
+    }
+  }
+
+  /* ---------- Vista: Impostazioni ---------- */
+  function vImpostazioni() {
+    const est = estFtp();
+    let h = '<h2>Impostazioni</h2>';
+    h += '<div class="card"><h3>FTP</h3><div class="row" style="align-items:flex-end"><div class="field"><label for="in-ftp">FTP attuale (W)</label><input type="number" id="in-ftp" min="50" max="600" step="1" inputmode="numeric" value="' + (P.ftp || '') + '"></div><button class="btn pri" data-act="saveFtp">Salva FTP</button>' + (strava.ftp && strava.ftp !== P.ftp ? '<button class="btn" data-act="useStravaFtp">Usa quella di Strava (' + strava.ftp + ' W)</button>' : '') + '</div><div class="kv"><div><span>Inserita</span><b>' + (P.ftp ? P.ftp + ' W' : '—') + '</b></div><div><span>Su Strava' + (strava.ftpEst ? ' (stimata)' : '') + '</span><b>' + (strava.ftp ? strava.ftp + ' W' : '—') + '</b></div><div><span>Stimata dai 20 min</span><b>' + (est ? '≈ ' + est.ftp + ' W' : '—') + '</b></div></div><p class="small mut">Tutti i target dei workout sono FTP × intensità. Ogni sessione conserva la FTP con cui è stata svolta, quindi cambiarla non altera lo storico. La stima (95% dei migliori 20 min degli ultimi 90 giorni) è un’indicazione, non una misura: vale solo se quei 20 minuti erano uno sforzo massimale.</p>';
+    h += '<h3>Storico FTP</h3>' + ((P.ftpHist || []).length ? '<div class="tw"><table><tbody>' + P.ftpHist.slice().reverse().map(x => '<tr><td>' + dmy(x.date) + '</td><td class="r"><b>' + x.ftp + ' W</b></td><td>' + srcName(x.src) + '</td><td class="r"><button class="btn sm ghost" data-act="delFtp" data-v="' + x.date + '">Elimina</button></td></tr>').join('') + '</tbody></table></div>' : '<p class="empty">Nessuna voce.</p>') + '<div class="row" style="align-items:flex-end"><div class="field"><label for="in-hd">Data</label><input type="date" id="in-hd" max="' + today() + '"></div><div class="field"><label for="in-hf">FTP (W)</label><input type="number" id="in-hf" min="50" max="600" step="1" inputmode="numeric"></div><button class="btn" data-act="addFtp">Aggiungi voce passata</button></div><p class="small mut">Le voci passate servono a calcolare zone, IF e TSS delle attività vecchie con la FTP che avevi allora.</p></div>';
+    const z = P.hrz || [null, null, null, null];
+    h += '<div class="card"><h3>Zone cardiache</h3><div class="row" style="align-items:flex-end">' + [0, 1, 2, 3].map(i => '<div class="field"><label for="in-hz' + i + '">Z' + (i + 1) + ' fino a (bpm)</label><input type="number" id="in-hz' + i + '" min="60" max="230" step="1" inputmode="numeric" style="max-width:110px" value="' + (z[i] || '') + '"></div>').join('') + '<button class="btn pri" data-act="saveHr">Salva zone</button>' + (strava.hrz ? '<button class="btn" data-act="useStravaHr">Importa da Strava</button>' : '') + '</div><p class="small mut">Z5 è tutto ciò che supera il limite di Z4. ' + (P.hrSrc === 'strava' ? 'Valori attuali importati da Strava.' : P.hrz ? 'Valori inseriti a mano.' : 'Nessun valore impostato.') + '</p>' +
+      '<div class="row" style="align-items:flex-end"><div class="field"><label for="in-rest">FC a riposo (bpm)</label><input type="number" id="in-rest" min="30" max="100" step="1" inputmode="numeric" style="max-width:110px" value="' + (P.restHr || '') + '"></div><div class="field"><label for="in-lthr">FC di soglia (bpm)</label><input type="number" id="in-lthr" min="100" max="220" step="1" inputmode="numeric" style="max-width:110px" value="' + (P.lthr || '') + '" placeholder="' + (P.hrz ? P.hrz[2] + 1 : '') + '"></div><button class="btn" data-act="saveHrRef">Salva</button></div><p class="small mut">Servono a stimare il carico dalle attività senza potenza. FC di soglia: la FC che tieni per circa un’ora al massimo; se vuota si usa l’inizio della tua Z4 (' + (P.hrz ? P.hrz[2] + 1 : '—') + ' bpm).</p></div>';
+    h += '<div class="card"><h3>Dispositivi</h3><div class="row"><span class="mut">Attrezzo</span><div class="seg" role="group" aria-label="Attrezzo"><button class="' + (P.mode === 'cyclette' ? 'on' : '') + '" data-act="mode" data-v="cyclette">Cyclette</button><button class="' + (P.mode === 'rivo' ? 'on' : '') + '" data-act="mode" data-v="rivo">Elite Rivo</button></div></div>' + devicesBlock() + '<p class="small mut"><b>Elite Rivo.</b> Secondo la scheda tecnica Elite trasmette via Bluetooth con i protocolli FTMS, Power e Speed&amp;Cadence e non ha ANT+. WATT legge potenza e cadenza dal servizio FTMS e attiva l’ERG solo se il rullo dichiara di accettare un target di potenza. Il rullo regge due connessioni Bluetooth: se Zwift o un’altra app lo sta già controllando, l’ERG di WATT può essere rifiutato.</p><p class="small mut"><b>Frequenza cardiaca Garmin.</b> Il Vivoactive 5 deve avere attiva la trasmissione FC (Impostazioni → Sensori e accessori → FC al polso → Trasmetti FC). Il manuale Garmin parla di trasmissione verso dispositivi associati senza precisare il Bluetooth: se l’orologio non compare nell’elenco del browser, non è raggiungibile da qui e serve una fascia Bluetooth, oppure la funzione «bridge» del Rivo, che inoltra la FC di un sensore associato al rullo.</p></div>';
+    if (SA) {
+      h += '<div class="card"><h3>Caricamento diretto su Strava</h3>';
+      if (UI.swMsg) h += '<p class="note bad">' + esc(UI.swMsg) + '</p>';
+      if (swOn()) h += '<div class="status"><span class="dot ok"></span><span>Collegato' + (SW.who ? ' come ' + esc(SW.who) : '') + ' · app Strava ' + CLIENT_ID + '</span></div><div class="row"><label class="check"><input type="checkbox" id="opt-autoup" data-chg="autoUp"' + (P.autoUp ? ' checked' : '') + '>Carica in automatico a fine sessione</label><button class="btn sm ghost" data-act="swOff">Scollega</button></div>';
+      else if (!canOAuth()) h += '<p class="note">Il caricamento diretto funziona solo quando la consolle è aperta da un indirizzo https (non da un file). Da qui usa «Scarica file per Strava».</p>';
+      else h += '<p class="small">Una volta sola: su <b>strava.com/settings/api</b> imposta «Authorization Callback Domain» a <b>' + esc(location.hostname) + '</b>, poi copia il Client Secret qui.</p><div class="row" style="align-items:flex-end"><div class="field"><label for="in-secret">Client Secret (app ' + CLIENT_ID + ')</label><input type="password" id="in-secret" autocomplete="off" spellcheck="false" style="max-width:340px"></div><button class="btn pri" data-act="swGo">Collega Strava</button></div><p class="small mut">Il Client Secret resta solo in questo browser, su questo dispositivo: non viene inviato ad altri che a Strava e non compare nel codice o negli indirizzi. Chi usa questo browser potrebbe leggerlo: se lo cambi su Strava, ricollega qui.</p>';
+      h += '</div>';
+    }
+    if (!SA) h += '<div class="card"><h3>Strava</h3><div class="status" id="syncline">' + syncLine() + '</div><div class="row" style="align-items:flex-end"><div class="field"><label for="in-months">Storico da importare</label><select id="in-months" data-chg="months"><option value="6"' + (P.months === 6 ? ' selected' : '') + '>6 mesi</option><option value="12"' + (P.months === 12 ? ' selected' : '') + '>12 mesi</option><option value="24"' + (P.months === 24 ? ' selected' : '') + '>24 mesi</option></select></div><button class="btn pri" data-act="sync">Sincronizza ora</button><button class="btn ghost" data-act="clearActs">Svuota attività importate</button></div><p class="small mut">Il collegamento passa dal connettore Strava del tuo account Claude: nessun Client Secret, nessun token e nessun Callback Domain in questa pagina. È in sola lettura, quindi WATT non può caricare sessioni su Strava. L’importazione è incrementale e senza duplicati: ogni attività è salvata una sola volta con il suo identificativo Strava. Le attività importate restano in questo browser e si riscaricano su un altro dispositivo.</p></div>';
+    h += '<div class="card"><h3>Avvisi e salvataggio</h3><div class="row"><label class="check"><input type="checkbox" id="set-voice" data-chg="voice"' + (P.voice ? ' checked' : '') + '>Avvisi vocali a inizio sessione, cambio intervallo e conclusione</label><button class="btn sm" data-act="testVoice">Prova voce</button></div><div class="status"><span class="dot ' + (UI.store === 'account' ? 'ok' : 'run') + '"></span><span>' + (SA ? 'Consolle autonoma: impostazioni e sessioni restano in questo browser. FTP e zone sono quelle che avevi in WATT quando l’hai scaricata.' : UI.store === 'account' ? 'FTP, zone, programma e sessioni sono salvati nel tuo spazio privato di questa pagina e ti seguono su ogni dispositivo.' : 'FTP, zone, programma e sessioni sono salvati solo in questo browser' + (UI.storeErr ? ' (salvataggio sull’account non riuscito: ' + esc(UI.storeErr) + ')' : '') + '.') + '</span></div></div>';
+    return h;
+  }
+
+  /* ---------- Rendering e azioni ---------- */
+  const VIEWS = { dashboard: vDashboard, allenamenti: vAllenamenti, consolle: vConsolle, impostazioni: vImpostazioni };
+  function render() {
+    charts = [];
+    document.querySelectorAll('.tabs a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + UI.view));
+    $('#view').innerHTML = VIEWS[UI.view]();
+    drawCharts();
+  }
+  function openModal(html) {
+    const keep = charts.length;
+    const m = $('#modal');
+    m.innerHTML = '<div class="box">' + html + '</div>';
+    m.hidden = false;
+    for (const c of charts.slice(keep)) { const el = document.getElementById(c.id); if (el) el.innerHTML = c.fn(Math.max(260, el.clientWidth || 320)); }
+  }
+  function closeModal() { const m = $('#modal'); m.hidden = true; m.innerHTML = ''; }
+  const numVal = id => { const e = document.getElementById(id); const v = e ? parseFloat(e.value) : NaN; return isFinite(v) ? v : null; };
+
+  const ACT = {
+    sync: () => sync(),
+    period: v => { UI.period = +v; render(); },
+    cat: v => { UI.cat = v; render(); },
+    detail: v => openDetail(v),
+    close: () => closeModal(),
+    dur: v => { UI.dur = +v; render(); },
+    goal: v => { UI.goal = v; render(); },
+    toggle: v => { UI.open[v] = !UI.open[v]; render(); },
+    pick: v => { UI.sel = v; LS.set('watt.sel', v); location.hash = '#consolle'; if (UI.view === 'consolle') render(); },
+    plan: v => { const w = byId(v); openModal('<div class="row spread"><h2>Programma</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>' + esc(w.name) + ' · ' + w.dur + ' min</p><div class="row" style="align-items:flex-end"><div class="field"><label for="in-pd">Data</label><input type="date" id="in-pd" min="' + today() + '" value="' + today() + '"></div><button class="btn pri" data-act="planAdd" data-v="' + w.id + '">Aggiungi al programma</button></div>'); },
+    planAdd: v => { const e = document.getElementById('in-pd'); const d = e && e.value; if (!d) return; P.plan = (P.plan || []).concat([{ id: 'p' + Date.now(), date: d, wid: v }]); save(); closeModal(); render(); },
+    unplan: v => { P.plan = (P.plan || []).filter(p => p.id !== v); save(); render(); },
+    mode: v => { P.mode = v; save(); render(); },
+    btT: () => connectTrainer(), btH: () => connectHr(), btOffT: () => disconnect(T), btOffH: () => disconnect(H),
+    start: () => startSession(false),
+    restore: () => startSession(true),
+    dropLive: () => { LS.del('watt.live'); render(); },
+    pause: () => { if (!live) return; if (live.timer.running()) live.timer.pause(); else { live.timer.resume(); live.note = ''; wakeOn(); } tick(); },
+    askEnd: () => { const c = $('#cs-confirm'); if (c) c.hidden = false; },
+    keep: () => { const c = $('#cs-confirm'); if (c) c.hidden = true; },
+    endSave: () => finish(true, false),
+    endDrop: () => finish(false, false),
+    fs: () => { try { const el = $('#console'); if (document.fullscreenElement) document.exitFullscreen(); else if (el.requestFullscreen) el.requestFullscreen().catch(() => {}); } catch (e) { /* schermo intero non disponibile */ } },
+    delSession: v => { P.sessions = (P.sessions || []).filter(s => s.id !== v); save(); render(); },
+    saveFtp: () => { const v = numVal('in-ftp'); if (v == null || v < 50 || v > 600) return openModal('<div class="row spread"><h2>FTP non valida</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Inserisci un valore tra 50 e 600 W.</p>'); setFtp(v, 'manuale'); render(); },
+    useStravaFtp: () => { if (strava.ftp) { setFtp(strava.ftp, 'strava'); render(); } },
+    addFtp: () => { const v = numVal('in-hf'), e = document.getElementById('in-hd'), d = e && e.value; if (v == null || v < 50 || v > 600 || !d || d > today()) return openModal('<div class="row spread"><h2>Voce non valida</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Servono una data non futura e una FTP tra 50 e 600 W.</p>'); setFtp(v, 'manuale', d); render(); },
+    delFtp: v => { P.ftpHist = (P.ftpHist || []).filter(h => h.date !== v); if (P.ftpHist.length) P.ftp = P.ftpHist[P.ftpHist.length - 1].ftp; save(); render(); },
+    saveHr: () => { const z = [0, 1, 2, 3].map(i => numVal('in-hz' + i)); if (z.some(v => v == null) || !(z[0] < z[1] && z[1] < z[2] && z[2] < z[3])) return openModal('<div class="row spread"><h2>Zone non valide</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Servono quattro limiti crescenti in bpm.</p>'); P.hrz = z.map(Math.round); P.hrSrc = 'manuale'; save(); render(); },
+    useStravaHr: () => { if (strava.hrz) { P.hrz = strava.hrz.slice(); P.hrSrc = 'strava'; save(); render(); } },
+    clearActs: () => { acts = {}; ans = {}; syncInfo = { at: null }; LS.del('watt.acts'); LS.del('watt.an'); LS.del('watt.sync'); setSync('idle', ''); render(); },
+    copyNote: (v, b) => { const w = byId(v); if (w) copyText(W.stravaNote(w, P.ftp), b); },
+    copySess: (v, b) => { const r = (P.sessions || []).find(x => x.id === v); if (r) copyText(sessNote(r), b); },
+    tcx: v => downloadTcx(v),
+    upload: (v, b) => swUpload(v, b),
+    swGo: () => swStart(),
+    swOff: () => { const t = SW && SW.access; SW = null; LS.del('watt.sw'); if (t) fetch(SAPI + '/oauth/deauthorize', { method: 'POST', headers: { Authorization: 'Bearer ' + t } }).catch(() => {}); render(); },
+    getSA: () => getStandalone(),
+    saveHrRef: () => { const r = numVal('in-rest'), t = numVal('in-lthr'); if (r == null || r < 30 || r > 100 || (t != null && (t <= r + 20 || t > 220))) return openModal('<div class="row spread"><h2>Valori non validi</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>FC a riposo tra 30 e 100 bpm; la FC di soglia, se indicata, deve essere ben sopra quella a riposo.</p>'); P.restHr = Math.round(r); P.lthr = t == null ? null : Math.round(t); save(); render(); },
+    testVoice: () => { const was = P.voice; P.voice = true; say('Avvisi vocali attivi.'); P.voice = was; }
+  };
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (b) { if (b.disabled) return; const f = ACT[b.dataset.act]; if (f) f(b.dataset.v, b, e); return; }
+    if (e.target.id === 'modal') closeModal();
+  });
+  document.addEventListener('change', e => {
+    const k = e.target.dataset && e.target.dataset.chg; if (!k) return;
+    if (k === 'voice') { P.voice = !!e.target.checked; save(); }
+    else if (k === 'erg') { P.erg = !!e.target.checked; save(); }
+    else if (k === 'months') { P.months = +e.target.value || 6; save(); }
+    else if (k === 'autoUp') { P.autoUp = !!e.target.checked; save(); }
+  });
+  const tip = $('#tip');
+  function showTip(e) {
+    const g = e.target.closest && e.target.closest('[data-tip]');
+    if (!g) { tip.hidden = true; return; }
+    tip.textContent = g.dataset.tip; tip.hidden = false;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(6, Math.min(e.clientX + 12, window.innerWidth - w - 6)) + 'px';
+    tip.style.top = Math.max(6, e.clientY - h - 12) + 'px';
+  }
+  document.addEventListener('pointermove', showTip);
+  document.addEventListener('pointerdown', showTip);
+  let rz = null;
+  window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(drawCharts, 150); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && live) { tick(); if (live.timer.running()) wakeOn(); } });
+  function route() {
+    const v = (location.hash || '').replace('#', '');
+    UI.view = VIEWS[v] && !(SA && v === 'dashboard') ? v : (SA ? 'consolle' : 'dashboard');
+    if (!live) { render(); window.scrollTo(0, 0); }
+  }
+  window.addEventListener('hashchange', route);
+
+  /* ---------- Avvio ---------- */
+  P.plan = (P.plan || []).filter(p => p.date >= localDay(new Date(Date.now() - 7 * 864e5)));
+  UI.sel = LS.get('watt.sel');
+  if (UI.sel && !byId(UI.sel)) UI.sel = null;
+  const todayPlan = (P.plan || []).find(p => p.date === today() && byId(p.wid));
+  if (!UI.sel && todayPlan) UI.sel = todayPlan.wid;
+  if (SA) document.body.classList.add('sa');
+  route();
+  if (SA && /[?&](code|error)=/.test(location.search)) swConnectFinish().then(() => { if (!live) { if (!location.hash) location.hash = '#impostazioni'; render(); } });
+  if (!SA) initStore();
+  if (!SA) use('mcp').then(m => {
+    mcp = m;
+    if (!m) { setSync(syncInfo.at ? 'ok' : 'err', syncInfo.at ? 'collegamento a Strava non disponibile in questa vista' : NOVIEW); return; }
+    if (!syncInfo.at || Date.now() - syncInfo.at > 30 * 60e3) sync(); else analyzeQueue();
+  });
+
+  window.__watt = { state: () => ({ P: P, acts: acts, ans: ans, UI: UI, live: live }), tick: tick };
+})();
+
+</script>
+</body>
+</html>
