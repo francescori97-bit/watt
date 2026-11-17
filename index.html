@@ -859,16 +859,46 @@ details summary { cursor: pointer; }
     });
   };
   /* done: secondi svolti (null = workout completo, per la nota prima di allenarsi) */
-  W.stravaDesc = function (w, ftp, done) {
-    const goal = (W.GOALS.find(g => g.id === w.goal) || {}).name || '';
-    const T = W.total(w.blocks);
-    let s = w.name + ' · ' + goal + ' · ' + w.dur + ' min' + (ftp ? ' · FTP ' + ftp + ' W' : '') + '\n\n' +
-      'Potenza da tenere (giri numerati come su Strava):\n' + W.targetLines(w.blocks, ftp).join('\n');
-    if (done != null) {
-      const laps = W.lapPlan(w.blocks);
-      s += '\n\n' + (done >= T - 1 ? 'Completato: ' + tm(T) + '.' : 'Svolto: ' + tm(done) + ' di ' + tm(T) + ' (interrotto durante il giro ' + (W.lapIndex(laps, done) + 1) + ').');
-    }
-    return s + '\n\nPerché: ' + w.why + '\n\nWATT';
+  /* sottotitoli in inglese per la nota Strava */
+  W.SUBTITLE = {
+    'Scarico facile': 'Easy spin', 'Sblocco gambe': 'Leg openers', 'Recupero a onde': 'Recovery waves', 'Scarico lungo': 'Long easy spin',
+    'Sblocco esteso': 'Extended openers', 'Onde lente': 'Slow waves', 'Recupero attivo lungo': 'Long active recovery', 'Recupero a blocchi': 'Recovery blocks',
+    'Fondo breve': 'Steady Z2', 'Fondo progressivo 40': 'Progressive Z2', 'Fondo con allunghi': 'Sub-threshold surges', 'Fondo medio': 'Steady Z2',
+    'Fondo progressivo 60': 'Progressive Z2', 'Fondo ondulato': 'Z2 with tempo lifts', 'Fondo lungo': 'Long steady Z2', 'Fondo progressivo 90': 'Long progressive Z2',
+    'Fondo a onde lungo': 'Long Z2 waves',
+    'Tempo 2×10': 'Tempo intervals', 'Tempo continuo 20': 'Continuous tempo', 'Tempo a scalare': 'Tempo ladder', 'Tempo 3×12': 'Tempo intervals',
+    'Tempo 2×18': 'Long tempo intervals', 'Tempo continuo 36': 'Continuous tempo', 'Tempo 3×20': 'Long tempo intervals', 'Tempo 4×14': 'High tempo intervals',
+    'Tempo lungo 60': 'Hour of tempo',
+    'Sweet spot 2×10': 'Sweet spot intervals', 'Sweet spot 3×6': 'Short sweet spot', 'Sweet spot 1×18': 'Continuous sweet spot', 'Sweet spot 3×12': 'Sweet spot intervals',
+    'Sweet spot 2×18': 'Long sweet spot', 'Sweet spot 4×8': 'Upper sweet spot', 'Sweet spot 3×20': 'Classic sweet spot', 'Sweet spot 4×14': 'Sweet spot volume',
+    'Sweet spot 2×30': 'Extended sweet spot',
+    'Soglia 3×6': 'Threshold intervals', 'Soglia 2×8': 'Sub-threshold intervals', 'Soglia 4×4': 'Supra-threshold intervals', 'Soglia 3×10': 'Threshold intervals',
+    'Soglia 2×15': 'Long threshold', 'Soglia 5×6': 'Threshold repeats', 'Sopra/sotto 3×9': 'Over-unders', 'Soglia 3×15': 'Long threshold',
+    'Soglia 4×12': 'Threshold volume', 'Sopra/sotto 4×12': 'Long over-unders',
+    'VO₂max 4×3': 'VO₂max intervals', '30/30 due serie': '30/30s', 'VO₂max 6×2': 'Short VO₂max intervals', 'VO₂max 5×4': 'Classic VO₂max',
+    'VO₂max 6×3': 'VO₂max intervals', '30/30 tre serie': '30/30 volume', 'VO₂max 6×5': 'Long VO₂max intervals', 'VO₂max 8×4': 'VO₂max volume',
+    'VO₂max più fondo': 'VO₂max + endurance'
+  };
+  /* durate: 8' · 30" · 1'30" */
+  const ap = s => (s % 60 === 0 ? s / 60 + "'" : s < 60 ? s + '"' : Math.floor(s / 60) + "'" + (s % 60 < 10 ? '0' : '') + (s % 60) + '"');
+  const p100 = p => Math.round(p * 100);
+  function noteIn(g) {
+    if (g.t === 'rep') return g.n + ' × [' + ap(g.a.d) + ' @ ' + p100(g.a.p) + '% + ' + ap(g.b.d) + ' @ ' + p100(g.b.p) + '%]';
+    if (g.t === 'grp') return g.n + ' × [' + g.items.map(noteIn).join(' + ') + ']';
+    return ap(g.a.d) + ' @ ' + p100(g.a.p) + '%';
+  }
+  function noteLine(g) {
+    if (g.t === 'wu') return 'WU ' + ap(g.d) + ' progressivo (' + p100(g.from) + '–' + p100(g.to) + '% FTP)';
+    if (g.t === 'cd') return 'CD ' + ap(g.d) + ' progressivo';
+    const t = noteIn(g);
+    return t.endsWith('%]') ? t.slice(0, -1) + ' FTP]' : t + ' FTP';
+  }
+  /* nota per Strava, nel formato scelto da Francesco */
+  W.stravaDesc = function (w, ftp) {
+    const goal = ((W.GOALS.find(g => g.id === w.goal) || {}).name || '').toUpperCase();
+    return goal + ' | ' + (W.SUBTITLE[w.name] || w.name) + '\n' +
+      "TARGET · " + w.dur + "'" + (ftp ? ' | FTP ' + ftp + ' W' : '') + '\n' +
+      W.groups(W.segments(w.blocks)).map(noteLine).join('\n');
   };
   W.stravaNote = function (w, ftp) { return W.stravaDesc(w, ftp, null); };
   W._oldNote = function (w, ftp) {
@@ -1891,7 +1921,7 @@ details summary { cursor: pointer; }
     const direct = swOn() ? '<div class="row"><button class="btn pri" data-act="upload" data-v="' + esc(rec.id) + '"' + (rec.stravaId || rec.upState === 'run' ? ' disabled' : '') + '>' + (rec.stravaId ? 'Già su Strava' : 'Carica su Strava') + '</button><span class="small" id="up-' + esc(rec.id) + '">' + upStatus(rec) + '</span></div>' : '';
     const what = [rec.avgP != null ? 'potenza' : '', rec.avgHr != null ? 'FC' : ''].filter(Boolean).join(' e ');
     return '<h3>Portala su Strava</h3>' + direct +
-      '<p class="small mut">' + (smp ? 'Su Strava trovi un giro per ogni intervallo con i dati misurati (' + what + '); la potenza da tenere è nella descrizione, giro per giro, e non viene mai scritta come potenza misurata.' : 'Nessun sensore collegato: su Strava viene creata l’attività con durata, orario e descrizione con la potenza da tenere, giro per giro. Senza dati misurati Strava non può mostrare i giri.') +
+      '<p class="small mut">' + (smp ? 'Su Strava trovi un giro per ogni intervallo con i dati misurati (' + what + '); nella descrizione c’è la nota con la potenza da tenere (in % della FTP indicata), mai scritta come potenza misurata.' : 'Nessun sensore collegato: su Strava viene creata l’attività con durata, orario e la nota nella descrizione. Senza dati misurati Strava non può mostrare i giri.') +
       (swOn() ? (P.autoUp ? ' Caricamento automatico attivo.' : '') + ' Strava la riceve una volta sola.' : ' Collega Strava in Impostazioni per caricarla con un tocco.') + '</p>' +
       (smp ? '<div class="row"><button class="btn" data-act="tcx" data-v="' + esc(rec.id) + '">Scarica file .tcx</button></div>' : '') +
       imgBox(rec) +
