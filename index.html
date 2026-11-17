@@ -159,9 +159,9 @@ tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
 /* ---------- Consolle a tutto schermo: grafico, target, timer, FC + zona, tempo trascorso ---------- */
 .cs { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; gap: 8px; padding: 8px 10px 10px; height: 100%; overflow: hidden;
   grid-template-columns: 1fr;
-  grid-template-rows: auto clamp(80px, 16vh, 170px) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr) auto auto auto;
-  grid-template-areas: 'top' 'ch' 'tg' 'it' 'pr' 'el' 'ctl' 'msg'; }
-.cs-top { grid-area: top; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--mut); min-height: 24px; }
+  grid-template-rows: minmax(0, 1.25fr) clamp(76px, 14vh, 160px) minmax(0, 1fr) minmax(0, 1fr) auto auto auto auto;
+  grid-template-areas: 'it' 'ch' 'p1' 'p2' 'el' 'top' 'ctl' 'msg'; }
+.cs-top { grid-area: top; display: flex; padding: 0 2px; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--mut); min-height: 24px; }
 .cs-top b { color: var(--fg); font-family: var(--display); font-size: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cs-conn { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
 .cs-chart { grid-area: ch; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -173,13 +173,14 @@ tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
 .cs-cell b { font-family: var(--display); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
 .cs-cell b small { font-size: .38em; color: var(--mut); font-weight: 500; margin-left: 6px; }
 .cs-cell .s { font-size: 14px; color: var(--mut); min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.cs-tg { grid-area: tg; } .cs-tg b { font-size: clamp(48px, 11vh, 120px); color: var(--acc); }
-.cs-it { grid-area: it; border-top: 4px solid var(--z1); } .cs-it b { font-size: clamp(64px, 15vh, 170px); }
-.cs-pair { grid-area: pr; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 0; }
+.cs-tg b { font-size: clamp(44px, 9.5vh, 110px); color: var(--acc); }
+.cs-it { grid-area: it; border-top: 4px solid var(--z1); } .cs-it b { font-size: clamp(60px, 12.5vh, 160px); }
+.cs-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 0; }
+.cs-p1 { grid-area: p1; } .cs-p2 { grid-area: p2; }
 .cs-hr b { font-size: clamp(40px, 9vh, 96px); color: #ff5d73; }
 .cs-hr b.na { color: var(--mut); font-size: clamp(30px, 6vh, 64px); }
-.cs-zn b { font-size: clamp(40px, 9vh, 96px); color: #111; border-radius: 10px; padding: 2px 18px; }
-.cs-zn b.na { color: var(--mut); background: transparent; }
+.cs-zn b { font-size: clamp(38px, 8.5vh, 92px); color: #111; border-radius: 10px; padding: 2px 18px; }
+.cs-zn b.na { color: var(--mut); background: transparent; font-size: clamp(30px, 6vh, 64px); }
 .cs-el { grid-area: el; padding: 6px 12px; }
 .cs-el b { font-size: clamp(30px, 5vh, 56px); }
 .cs-el .bar { width: 100%; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
@@ -192,16 +193,31 @@ tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
 .cs-confirm .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
 .cs-confirm .btn { min-height: 52px; }
 .cs.paused .cs-it b { color: var(--warn); }
+@media (orientation: portrait) and (max-height: 720px) {
+  .cs { gap: 6px; padding: 6px 8px 8px; grid-template-rows: minmax(0, 1.2fr) clamp(54px, 11vh, 96px) minmax(0, 1fr) minmax(0, 1fr) auto auto auto auto; }
+  .cs-cell { padding: 2px 8px; }
+  .cs-cell label { font-size: 10px; }
+  .cs-cell .s { font-size: 12px; min-height: 15px; }
+  .cs-it b { font-size: clamp(46px, 10.5vh, 90px); }
+  .cs-tg b, .cs-hr b { font-size: clamp(28px, 6.5vh, 58px); }
+  .cs-zn b { font-size: clamp(26px, 6vh, 54px); padding: 0 12px; }
+  .cs-zn b.na, .cs-hr b.na { font-size: clamp(22px, 5vh, 40px); }
+  .cs-el { flex-direction: row; gap: 10px; padding: 4px 10px; }
+  .cs-el label { display: none; }
+  .cs-el b { font-size: 26px; }
+  .cs-el .bar { flex: 1; margin: 0; }
+  .cs-top { min-height: 18px; } .cs-top b { font-size: 15px; }
+  .cs-ctl .btn { min-height: 48px; font-size: 16px; }
+}
 @media (orientation: landscape) and (max-height: 560px) {
-  .cs { grid-template-columns: 1fr 1.25fr 1fr 150px;
-    grid-template-rows: auto clamp(50px, 22vh, 110px) minmax(0, 1fr) auto auto;
-    grid-template-areas: 'top top top top' 'ch ch ch ctl' 'tg it pr ctl' 'el el el ctl' 'msg msg msg msg'; }
-  .cs-pair { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .cs { grid-template-columns: 1fr 1fr 150px;
+    grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr) auto auto;
+    grid-template-areas: 'it ch ctl' 'p1 p2 ctl' 'el el ctl' 'top top msg'; }
   .cs-ctl { grid-template-columns: 1fr; grid-template-rows: 2fr 1fr auto; }
   .cs-cell { padding: 2px 6px; }
   .cs-cell .s { font-size: 11px; min-height: 14px; }
-  .cs-tg b { font-size: clamp(32px, 16vh, 84px); }
-  .cs-it b { font-size: clamp(44px, 22vh, 120px); }
+  .cs-tg b { font-size: clamp(28px, 13vh, 72px); }
+  .cs-it b { font-size: clamp(48px, 24vh, 130px); }
   .cs-hr b, .cs-zn b { font-size: clamp(22px, 9vh, 48px); }
   .cs-hr b.na { font-size: clamp(18px, 7vh, 36px); }
   .cs-el { flex-direction: row; gap: 12px; padding: 4px 10px; }
@@ -1737,13 +1753,15 @@ details summary { cursor: pointer; }
   function spokenDur(sec) { const m = Math.floor(sec / 60), s = sec % 60; return (m ? m + (m === 1 ? ' minuto' : ' minuti') : '') + (m && s ? ' e ' : '') + (s ? s + ' secondi' : ''); }
   function buildConsole() {
     const L = live, el = $('#console');
-    el.innerHTML = '<div class="cs-top"><b>' + esc(L.wk.name) + '</b><div class="cs-conn" id="cs-conn"></div></div>' +
-      '<div class="cs-chart">' + wkSvg(L.wk.blocks).replace('class="wsvg"', '') + '<div class="cs-done" id="cs-done"></div><div class="cs-cur" id="cs-cur"></div></div>' +
-      '<div class="cs-cell cs-tg"><label>Target</label><b class="num"><span id="cs-tw">—</span><small>W</small></b><div class="s" id="cs-tp"></div></div>' +
+    el.innerHTML =
       '<div class="cs-cell cs-it" id="cs-itc"><label id="cs-il">Intervallo</label><b class="num" id="cs-it">0:00</b><div class="s" id="cs-in"></div></div>' +
-      '<div class="cs-pair"><div class="cs-cell cs-hr"><label>Frequenza cardiaca</label><b class="num" id="cs-hr">n/d</b><div class="s" id="cs-hz"></div></div>' +
+      '<div class="cs-chart">' + wkSvg(L.wk.blocks).replace('class="wsvg"', '') + '<div class="cs-done" id="cs-done"></div><div class="cs-cur" id="cs-cur"></div></div>' +
+      '<div class="cs-pair cs-p1"><div class="cs-cell cs-tg"><label>Target</label><b class="num"><span id="cs-tw">—</span><small>W</small></b><div class="s" id="cs-tp"></div></div>' +
       '<div class="cs-cell cs-zn"><label>Zona di potenza</label><b class="num" id="cs-zt">—</b><div class="s" id="cs-zn"></div></div></div>' +
+      '<div class="cs-pair cs-p2"><div class="cs-cell cs-hr"><label>Frequenza cardiaca</label><b class="num" id="cs-hr">n/d</b><div class="s" id="cs-hz"></div></div>' +
+      '<div class="cs-cell cs-zn"><label>Zona cardiaca</label><b class="num na" id="cs-hzb">n/d</b><div class="s" id="cs-hzn"></div></div></div>' +
       '<div class="cs-cell cs-el"><label>Tempo trascorso</label><b class="num" id="cs-el">0:00</b><div class="bar"><i id="cs-bar"></i></div><div class="s"><span id="cs-pc">0%</span> · <span id="cs-rm"></span></div></div>' +
+      '<div class="cs-top"><b>' + esc(L.wk.name) + '</b><div class="cs-conn" id="cs-conn"></div></div>' +
       '<div class="cs-ctl"><button class="btn pri" id="cs-pause" data-act="pause">Pausa</button><button class="btn danger" data-act="askEnd">Termina</button><button class="btn" data-act="fs" aria-label="Schermo intero">⛶</button></div>' +
       '<div class="cs-msg" id="cs-msg"></div>' +
       '<div class="cs-confirm" id="cs-confirm" hidden><div class="box"><h2>Terminare la sessione?</h2><p class="mut">Il lavoro svolto finora viene salvato tra le sessioni registrate.</p><button class="btn pri" data-act="keep">Continua l’allenamento</button><button class="btn" data-act="endSave">Termina e salva</button><button class="btn danger" data-act="endDrop">Termina senza salvare</button></div></div>';
@@ -1780,7 +1798,10 @@ details summary { cursor: pointer; }
     if (he) { const c = 'num' + (hr == null ? ' na' : ''); if (he.className !== c) he.className = c; }
     setT('cs-hr', hr == null ? 'n/d' : String(hr));
     const hz = W.zoneOfHr(hr, P.hrz);
-    setT('cs-hz', hr == null ? (H.state === 'lost' ? 'segnale FC perso' : 'nessun sensore FC') : (hz ? 'Z' + hz + ' · ' + HZN[hz - 1] : 'bpm'));
+    setT('cs-hz', hr == null ? (H.state === 'lost' ? 'segnale FC perso' : 'nessun sensore FC') : 'bpm');
+    const hzb = document.getElementById('cs-hzb');
+    if (hzb) { const cl = 'num' + (hz ? ' z' + HZC[hz - 1] : ' na'); if (hzb.className !== cl) hzb.className = cl; setT('cs-hzb', hz ? 'Z' + hz : 'n/d'); }
+    setT('cs-hzn', hz ? HZN[hz - 1] : (hr != null && !P.hrz ? 'zone FC non impostate' : ''));
     zBox('cs-zt', W.zoneOfFrac(b.p)); setT('cs-zn', W.PZ[W.zoneOfFrac(b.p) - 1].name);
     const pc = (sec / T0) * 100;
     const bar = document.getElementById('cs-bar'); if (bar) bar.style.width = pc.toFixed(2) + '%';
