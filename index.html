@@ -315,13 +315,13 @@ details summary { cursor: pointer; }
         if (s[i] !== ')') throw new Error('DSL: parentesi non chiusa in ' + s);
         i++;
         const r = [];
-        for (let k = 0; k < +m[1]; k++) inner.forEach(b => r.push({ d: b.d, p: b.p, k: b.k }));
+        for (let k = 0; k < +m[1]; k++) inner.forEach(b => r.push(Object.assign({}, b)));
         return r;
       }
       m = /^(wu|cd)(\d+)/.exec(rest);
       if (m) { i += m[0].length; return ramp(m[1], +m[2]); }
-      m = /^(\d+(?:\.\d+)?)@(\d+)/.exec(rest);
-      if (m) { i += m[0].length; return [{ d: Math.round(+m[1] * 60), p: +m[2] / 100, k: 'w' }]; }
+      m = /^(\d+(?:\.\d+)?)@(\d+)(?:r(\d+))?/.exec(rest);
+      if (m) { i += m[0].length; const o = { d: Math.round(+m[1] * 60), p: +m[2] / 100, k: 'w' }; if (m[3]) o.c = +m[3]; return [o]; }
       throw new Error('DSL: non riconosciuto "' + rest + '"');
     }
     function seq(end) {
@@ -343,7 +343,10 @@ details summary { cursor: pointer; }
     { id: 'tmp', name: 'Tempo' },
     { id: 'ss', name: 'Sweet spot' },
     { id: 'thr', name: 'Soglia' },
-    { id: 'vo2', name: 'VO₂max' }
+    { id: 'vo2', name: 'VO₂max' },
+    { id: 'ana', name: 'Anaerobico' },
+    { id: 'frz', name: 'Forza' },
+    { id: 'test', name: 'Test' }
   ];
 
   /* goal, nome, descrizione, durata (min), sequenza, perché, come eseguirlo.
@@ -518,12 +521,85 @@ details summary { cursor: pointer; }
       'Nel fondo finale resta in Z2 anche se ti senti bene: è volume, non qualità.']
   ];
 
+  /* Workout duri e utili: formati classici e celebri, con la loro durata. Fonti dei formati Zwift: 5×5 al 110% (The Gorby) e la variante Tri247. */
+  const RAMP = []; for (let p = 50; p <= 170; p += 6) RAMP.push('1@' + p);
+  const SRC_PRO = [
+    ['vo2', 'VO₂max 5×5 al 110%', 'Cinque blocchi da 5 minuti al 110%: il formato di The Gorby, tra i workout più duri di Zwift.', 'wu10;5x(5@110,4@50);cd5',
+      'Cinque minuti al 110% bastano a portare il consumo di ossigeno vicino al massimo e accumulano acidosi: allena VO₂max e tenuta sopra soglia nella stessa seduta.',
+      'Il terzo blocco è il punto di rottura mentale: dividilo minuto per minuto. Recupero sciolto al 50%, cadenza 90–100.', 'Gorby-style VO₂max'],
+    ['vo2', 'Sopra soglia 6×5 alternati', 'Tre volte 5 minuti al 105% e 5 al 110%, con 5 minuti di recupero: la variante lunga del Gorby proposta da Tri247.', 'wu5;3x(5@105,5@50,5@110,5@50);cd5',
+      'Sei blocchi lunghi appena sopra soglia: trenta minuti di lavoro a intensità VO₂max, con l’alternanza 105/110% che rende sostenibile un volume altrimenti impossibile.',
+      'I blocchi al 105% non sono “facili”: tienili precisi per arrivare al 110% successivo. Mangia nei recuperi.', 'Extended Gorby'],
+    ['vo2', '30/15 Rønnestad', 'Tre serie da 13 × (30″ al 120% + 15″ al 50%).', 'wu12;13x(0.5@120,0.25@50);3@50;13x(0.5@120,0.25@50);3@50;13x(0.5@120,0.25@50);cd8',
+      'Le ripetute 30/15 tengono il consumo di ossigeno alto più a lungo delle ripetute continue; in uno studio su ciclisti allenati (Rønnestad, 2015) hanno migliorato VO₂max e potenza più dei 4×5 minuti.',
+      'Il recupero di 15 secondi è cortissimo: non smettere mai di pedalare. Cadenza 100+ nei 30 secondi forti.', '30/15s'],
+    ['vo2', '40/20 quattro serie', 'Quattro serie da 8 × (40″ al 115% + 20″ al 50%).', 'wu12;8x(0.6667@115,0.3333@50);4@50;8x(0.6667@115,0.3333@50);4@50;8x(0.6667@115,0.3333@50);4@50;8x(0.6667@115,0.3333@50);cd8',
+      'Quaranta secondi forti e venti facili: più lavoro per ripetuta dei 30/30, quindi più tempo vicino al VO₂max senza la fatica delle ripetute da 4–5 minuti.',
+      'Le prime due serie devono sembrare gestibili. In ERG resta seduto e lascia che il rullo cambi carico.', '40/20s'],
+    ['vo2', 'VO₂max a scalare 5×3', 'Cinque ripetute da 3 minuti che salgono dal 106 al 122%.', 'wu12;3@106;3@50;3@110;3@50;3@114;3@50;3@118;3@50;3@122;cd10',
+      'Ogni ripetuta è più dura della precedente: le prime preparano il sistema aerobico, le ultime spingono oltre il VO₂max quando sei già affaticato.',
+      'Non bruciarti nelle prime due: la seduta si gioca nelle ultime. Recupero vero al 50%.', 'Escalating VO₂max'],
+    ['vo2', 'Piramide VO₂max', '1-2-3-4-3-2-1 minuti al 115%, recupero uguale al lavoro.', 'wu12;1@115;1@50;2@115;2@50;3@115;3@50;4@115;4@50;3@115;3@50;2@115;2@50;1@115;cd10',
+      'Durate che crescono e poi scendono: sedici minuti al 115% con il blocco più lungo al centro, quando sei caldo ma non ancora svuotato.',
+      'Il blocco da 4 minuti è il cuore: se lo tieni, il resto è in discesa. Cadenza alta.', 'VO₂max pyramid'],
+    ['thr', 'Seiler 4×8', 'Quattro blocchi da 8 minuti al 105%, recupero 2 minuti.', 'wu12;4x(8@105,2@50);cd8',
+      'Il formato 4×8 dello studio di Seiler sugli allenati: blocchi lunghi al limite alto della soglia con recuperi corti, ottimo per alzare la FTP.',
+      'Recuperi corti apposta: non fermarti. Se l’ultimo blocco crolla, la FTP impostata è alta.', 'Seiler 4×8'],
+    ['thr', '2×20 alla soglia', 'Due blocchi da 20 minuti al 100% della FTP.', 'wu12;2x(20@100,5@50);cd8',
+      'Il classico per eccellenza: quaranta minuti alla FTP. È anche una verifica: se li completi entrambi, la FTP è giusta o bassa.',
+      'Parti preciso e non sopra il target. Dividi ogni blocco in quattro parti da 5 minuti.', 'Classic 2×20'],
+    ['thr', 'Soglia 3×12 al 103%', 'Tre blocchi da 12 minuti appena sopra la FTP.', 'wu12;3x(12@103,4@50);cd8',
+      'Appena sopra soglia per 12 minuti: il lattato sale lentamente e allena il corpo a sopportarlo e a smaltirlo mentre spinge.',
+      'Il primo blocco deve sembrare controllato. Bevi in ogni recupero.', 'Supra-threshold 3×12'],
+    ['thr', 'Partenza forte 4×8', 'Quattro volte un minuto al 130% e subito sette alla soglia.', 'wu12;4x(1@130,7@100,4@50);cd8',
+      'Lo scatto iniziale riempie le gambe di lattato e poi devi tenere la soglia: simula un attacco seguito da un ritmo sostenuto.',
+      'Nel minuto al 130% cadenza alta, poi assestati subito sul 100% senza calare sotto.', 'Hard-start threshold'],
+    ['thr', 'Sopra/sotto duro 3×12', 'Tre blocchi di 4 × (1′ al 110% + 2′ al 95%).', 'wu12;3x(4x(1@110,2@95),5@50);cd8',
+      'Versione dura degli over-under: il 95% lascia pochissimo margine per smaltire il lattato prodotto al 110%.',
+      'Se nel terzo blocco non tieni il 110%, scendi al 105% ma non mollare il 95%.', 'Hard over-unders'],
+    ['ss', 'Sweet spot 2×45', 'Due blocchi da 45 minuti all’88%: due ore di seduta.', 'wu10;2x(45@88,5@50);cd10',
+      'Novanta minuti nello sweet spot: resistenza vicino alla soglia per uscite lunghe e salite di un’ora.',
+      'Carboidrati 60–90 g all’ora dal primo blocco. Ogni 15 minuti alzati 20 secondi sui pedali.', 'Big sweet spot'],
+    ['frz', 'Forza 5×6 a 60 rpm', 'Cinque blocchi da 6 minuti all’88% a 60 pedalate al minuto.', 'wu10;5x(6@88r60,3@50);cd5',
+      'Pedalare a bassa cadenza con carico alto è lavoro di forza resistente: utile per salite ripide e per preparare le gambe allo sci.',
+      'Tieni il busto fermo e spingi con tutto il piede. Se senti dolore alle ginocchia, alza la cadenza a 70.', 'Low-cadence strength'],
+    ['frz', 'Forza 4×10 a 55 rpm', 'Quattro blocchi da 10 minuti all’82% a 55 rpm.', 'wu12;4x(10@82r55,4@50);cd8',
+      'Blocchi lunghi a cadenza molto bassa: tensione muscolare prolungata con richiesta cardiaca moderata, il lavoro di forza più specifico sulla bici.',
+      'Resta seduto, spalle rilassate. Nei recuperi torna a 90–100 rpm per sciogliere.', 'Muscle tension intervals'],
+    ['frz', 'Forza e soglia', 'Tre volte 6 minuti al 90% a 55 rpm e subito 6 al 100% a 95 rpm.', 'wu12;3x(6@90r55,6@100r95,4@50);cd8',
+      'Prima la forza a bassa cadenza, poi la soglia ad alta cadenza: allena a cambiare stile di pedalata sotto fatica, come su una salita irregolare.',
+      'Il cambio da 55 a 95 rpm è la parte difficile: alza la cadenza in 10 secondi, non di colpo.', 'Strength + threshold combo'],
+    ['frz', 'Salita lunga a bassa cadenza', 'Due blocchi da 20 minuti all’85% a 60 rpm.', 'wu10;2x(20@85r60,5@50);cd10',
+      'Simula una salita lunga e ripida: venti minuti di forza resistente sotto la soglia, utili per i passi di montagna e per le gambe da sci.',
+      'Mantieni 60 rpm costanti; se la FC esce dalla Z3 scendi all’80%.', 'Long low-cadence climb'],
+    ['ana', 'Tabata doppio', 'Due serie da 8 × (20″ al 170% + 10″ al 50%).', 'wu15;8x(0.3333@170,0.1667@50);6@50;8x(0.3333@170,0.1667@50);cd10',
+      'Venti secondi quasi massimali con dieci di pausa: stressa al massimo la capacità anaerobica e la tolleranza all’acidosi in pochi minuti.',
+      'Disattiva l’ERG: a questi carichi il rullo non segue i cambi in tempo. Spingi a sensazione, cadenza 110+.', 'Double Tabata'],
+    ['ana', 'Sprint 10×15″', 'Dieci sprint da 15 secondi con recupero lungo.', 'wu15;10x(0.25@200r110,2.75@50);cd10',
+      'Sprint brevi e recuperi completi: allenano la potenza neuromuscolare, il colpo di pedale di un attacco o di una volata.',
+      'Disattiva l’ERG e sprinta in piedi. Recupera davvero: ogni sprint deve essere esplosivo come il primo.', 'Neuromuscular sprints'],
+    ['ana', 'Capacità anaerobica 6×1′', 'Sei minuti al 140% con 4 minuti di recupero.', 'wu15;6x(1@140,4@50);cd10',
+      'Un minuto al 140% esaurisce la capacità anaerobica: migliora la potenza sui due–tre minuti di uno strappo o di un attacco.',
+      'Gli ultimi 20 secondi sono quelli che allenano. Recupero completo prima del successivo.', 'Anaerobic capacity'],
+    ['end', 'Fondo lungo con sprint', 'Due ore in Z2 con uno sprint da 10 secondi ogni 10 minuti.', 'wu10;10x(9.8333@68,0.1667@170);cd10',
+      'Due ore di base aerobica con brevi sprint che tengono attive le fibre veloci e spezzano la monotonia senza aggiungere molta fatica.',
+      'Acqua e 60 g di carboidrati all’ora. Sprint seduto o in piedi, poi subito di nuovo in Z2.', 'Long Z2 with sprints'],
+    ['test', 'Test a rampa (FTP)', 'Gradini da 1 minuto che salgono del 6% fino allo sfinimento.', 'wu5;' + RAMP.join(';') + ';cd5',
+      'La potenza cresce ogni minuto finché non riesci più a tenerla: la FTP stimata è il 75% del tuo miglior minuto. Serve il Rivo collegato per misurarla.',
+      'Pedala fino a quando non tieni più il target, poi premi Termina e salva: WATT calcola la FTP e te la propone.', 'Ramp test', { test: true }]
+  ];
+  const HARD = ['VO₂max 5×5 al 110%', 'Sopra soglia 6×5 alternati', '30/15 Rønnestad', '40/20 quattro serie', 'VO₂max a scalare 5×3', 'Piramide VO₂max', 'Seiler 4×8', '2×20 alla soglia', 'Soglia 3×12 al 103%', 'Partenza forte 4×8', 'Sopra/sotto duro 3×12', 'Sweet spot 2×45', 'Forza e soglia', 'Tabata doppio', 'Sprint 10×15″', 'Capacità anaerobica 6×1′', 'Test a rampa (FTP)'];
+
   W.total = function (blocks) { let t = 0; for (const b of blocks) t += b.d; return t; };
 
   W.LIB = SRC.map(function (r, idx) {
     const blocks = W.parseDsl(r[4]);
     return { id: r[0] + '-' + r[3] + '-' + idx, goal: r[0], name: r[1], desc: r[2], dur: r[3], blocks: blocks, why: r[5], how: r[6] };
-  });
+  }).concat(SRC_PRO.map(function (r, idx) {
+    const blocks = W.parseDsl(r[3]), T = W.total(blocks);
+    return Object.assign({ id: 'pro-' + r[0] + '-' + idx, goal: r[0], name: r[1], desc: r[2], dur: Math.round(T / 60), blocks: blocks, why: r[4], how: r[5], pro: true, hard: HARD.indexOf(r[1]) >= 0 }, r[7] || {});
+  }));
+  W.PRO_SUB = {}; SRC_PRO.forEach(r => { W.PRO_SUB[r[1]] = r[6]; });
 
   /* Stima dai soli target (non è un dato misurato): IF = radice quarta della media di p^4 pesata sul tempo. */
   W.planStats = function (blocks) {
@@ -766,11 +842,14 @@ details summary { cursor: pointer; }
     tmp: { what: 'Ritmo medio, Z3 (76–90%): resistenza su sforzi lunghi ed economia di pedalata.', when: '1–2 volte a settimana; costa più della Z2 ma meno dello sweet spot.' },
     ss: { what: 'Sweet spot (88–94%): stimolo sulla soglia con fatica contenuta.', when: '1–2 volte a settimana per far crescere la FTP con poco tempo.' },
     thr: { what: 'Soglia, Z4 (95–105%): alza la potenza sostenibile prima che il lattato si accumuli.', when: 'Al massimo 1–2 volte a settimana, con un giorno facile dopo.' },
-    vo2: { what: 'VO₂max, Z5 (106–120%): il tetto aerobico.', when: 'Al massimo 1–2 volte a settimana, con gambe fresche.' }
+    vo2: { what: 'VO₂max, Z5 (106–120%): il tetto aerobico.', when: 'Al massimo 1–2 volte a settimana, con gambe fresche.' },
+    ana: { what: 'Capacità anaerobica e potenza neuromuscolare, Z6–Z7 (sopra il 120%): scatti, strappi, volate.', when: 'Una volta a settimana al massimo, lontano dalle sedute di soglia.' },
+    frz: { what: 'Forza resistente a bassa cadenza (50–60 rpm): spinta muscolare sotto carico, con FC moderata.', when: '1–2 volte a settimana in preparazione; utile per salite ripide e per le gambe da sci.' },
+    test: { what: 'Misura della FTP: senza un valore giusto zone, target, carico e W/kg sono sbagliati.', when: 'Ogni 6–8 settimane, riposato, con il rullo collegato.' }
   };
 
   /* Struttura compatta: riscaldamento/defaticamento uniti, coppie lavoro+recupero ripetute raggruppate. */
-  const eqB = (a, b) => a && b && a.d === b.d && a.p === b.p && a.k === b.k;
+  const eqB = (a, b) => a && b && a.d === b.d && a.p === b.p && a.k === b.k && a.c === b.c;
   W.segments = function (blocks) {
     const out = [];
     let i = 0;
@@ -860,7 +939,8 @@ details summary { cursor: pointer; }
   };
   /* done: secondi svolti (null = workout completo, per la nota prima di allenarsi) */
   /* sottotitoli in inglese per la nota Strava */
-  W.SUBTITLE = {
+  W.SUBTITLE = W.SUBTITLE || {};
+  const SUB0 = {
     'Scarico facile': 'Easy spin', 'Sblocco gambe': 'Leg openers', 'Recupero a onde': 'Recovery waves', 'Scarico lungo': 'Long easy spin',
     'Sblocco esteso': 'Extended openers', 'Onde lente': 'Slow waves', 'Recupero attivo lungo': 'Long active recovery', 'Recupero a blocchi': 'Recovery blocks',
     'Fondo breve': 'Steady Z2', 'Fondo progressivo 40': 'Progressive Z2', 'Fondo con allunghi': 'Sub-threshold surges', 'Fondo medio': 'Steady Z2',
@@ -879,19 +959,22 @@ details summary { cursor: pointer; }
     'VO₂max 6×3': 'VO₂max intervals', '30/30 tre serie': '30/30 volume', 'VO₂max 6×5': 'Long VO₂max intervals', 'VO₂max 8×4': 'VO₂max volume',
     'VO₂max più fondo': 'VO₂max + endurance'
   };
+  W.SUBTITLE = Object.assign({}, SUB0, W.PRO_SUB);
   /* durate: 8' · 30" · 1'30" */
   const ap = s => (s % 60 === 0 ? s / 60 + "'" : s < 60 ? s + '"' : Math.floor(s / 60) + "'" + (s % 60 < 10 ? '0' : '') + (s % 60) + '"');
   const p100 = p => Math.round(p * 100);
   function noteIn(g) {
-    if (g.t === 'rep') return g.n + ' × [' + ap(g.a.d) + ' @ ' + p100(g.a.p) + '% + ' + ap(g.b.d) + ' @ ' + p100(g.b.p) + '%]';
+    const one = b => ap(b.d) + ' @ ' + p100(b.p) + '%' + (b.c ? ' (' + b.c + ' rpm)' : '');
+    if (g.t === 'rep') return g.n + ' × [' + one(g.a) + ' + ' + one(g.b) + ']';
     if (g.t === 'grp') return g.n + ' × [' + g.items.map(noteIn).join(' + ') + ']';
-    return ap(g.a.d) + ' @ ' + p100(g.a.p) + '%';
+    return one(g.a);
   }
   function noteLine(g) {
     if (g.t === 'wu') return 'WU ' + ap(g.d) + ' progressivo (' + p100(g.from) + '–' + p100(g.to) + '% FTP)';
     if (g.t === 'cd') return 'CD ' + ap(g.d) + ' progressivo';
     const t = noteIn(g);
-    return t.endsWith('%]') ? t.slice(0, -1) + ' FTP]' : t + ' FTP';
+    if (t.endsWith(']')) return t.slice(0, -1) + ' FTP]';
+    return /\)$/.test(t) ? t.replace(/% \((\d+) rpm\)$/, '% FTP ($1 rpm)') : t + ' FTP';
   }
   /* nota per Strava, nel formato scelto da Francesco */
   W.stravaDesc = function (w, ftp) {
@@ -1088,7 +1171,7 @@ details summary { cursor: pointer; }
   let ans = LS.get('watt.an') || {};
   let syncInfo = LS.get('watt.sync') || { at: null };
   let strava = LS.get('watt.strava') || { ftp: null, hrz: null, weight: null };
-  const UI = { view: 'dashboard', period: 84, cat: 'all', dur: 60, goal: 'all', sel: null, open: {}, sync: { state: 'idle', msg: '' }, store: 'local', storeErr: null };
+  const UI = { view: 'dashboard', period: 84, cat: 'all', dur: 'm', goal: 'all', sel: null, open: {}, sync: { state: 'idle', msg: '' }, store: 'local', storeErr: null };
   let charts = [];
   let live = null;
 
@@ -1387,7 +1470,7 @@ details summary { cursor: pointer; }
     s += '<text x="' + m.l + '" y="' + (h - 6) + '">' + dmy(hist[0].date) + '</text><text x="' + (w - m.r) + '" y="' + (h - 6) + '" text-anchor="end">oggi</text>';
     return s + '</svg>';
   }
-  const srcName = s => (s === 'strava' ? 'importata da Strava' : 'inserita a mano');
+  const srcName = s => (s === 'strava' ? 'importata da Strava' : s === 'test' ? 'test a rampa' : 'inserita a mano');
   function wkSvg(blocks) {
     const T = W.total(blocks), H = 100, top = 1.3;
     let x = 0, s = '<svg class="wsvg" viewBox="0 0 1000 ' + H + '" preserveAspectRatio="none" role="img" aria-label="Profilo del workout: larghezza = durata, altezza = intensità rispetto alla FTP">';
@@ -1606,7 +1689,7 @@ details summary { cursor: pointer; }
   /* ---------- Vista: Allenamenti ---------- */
   const pct = p => Math.round(p * 100) + '%';
   const eqB = (a, b) => a && b && a.d === b.d && a.p === b.p && a.k === b.k;
-  function ivLine(b, ftp) { return W.fmtTime(b.d) + ' al ' + pct(b.p) + (ftp ? ' · ' + W.targetWatts(ftp, b.p) + ' W' : ''); }
+  function ivLine(b, ftp) { return W.fmtTime(b.d) + ' al ' + pct(b.p) + (ftp ? ' · ' + W.targetWatts(ftp, b.p) + ' W' : '') + (b.c ? ' · ' + b.c + ' rpm' : ''); }
   function intervals(blocks, ftp) {
     let h = '', i = 0;
     const row = (d, z, t) => '<div><span class="d">' + d + '</span><span class="zc z' + z + '">Z' + z + '</span><span>' + t + '</span></div>';
@@ -1620,7 +1703,7 @@ details summary { cursor: pointer; }
       let r = 1;
       if (blocks[i + 1] && blocks[i + 1].k === 'w' && !eqB(b, blocks[i + 1])) { while (eqB(blocks[i + 2 * r], b) && eqB(blocks[i + 2 * r + 1], blocks[i + 1])) r++; }
       if (r >= 2) { h += row(r + ' ×', W.zoneOfFrac(b.p), ivLine(b, ftp) + ' + ' + ivLine(blocks[i + 1], ftp)); i += 2 * r; continue; }
-      h += row(W.fmtTime(b.d), W.zoneOfFrac(b.p), 'al ' + pct(b.p) + (ftp ? ' · ' + W.targetWatts(ftp, b.p) + ' W' : '') + ' · ' + W.blockLabel(b));
+      h += row(W.fmtTime(b.d), W.zoneOfFrac(b.p), 'al ' + pct(b.p) + (ftp ? ' · ' + W.targetWatts(ftp, b.p) + ' W' : '') + (b.c ? ' · ' + b.c + ' rpm' : '') + ' · ' + W.blockLabel(b));
       i++;
     }
     return '<div class="ivl">' + h + '</div>';
@@ -1654,13 +1737,14 @@ details summary { cursor: pointer; }
       '<div class="row"><button class="btn pri sm" data-act="pick" data-v="' + w.id + '">Apri in consolle</button><button class="btn sm" data-act="toggle" data-v="' + w.id + '">' + (open ? 'Chiudi spiegazione' : 'Spiegazione e intervalli') + '</button><button class="btn sm ghost" data-act="plan" data-v="' + w.id + '">Programma</button></div></div>';
   }
   function vAllenamenti() {
-    const list = W.LIB.filter(w => w.dur === UI.dur && (UI.goal === 'all' || w.goal === UI.goal));
+    const inDur = w => UI.dur === 'all' || (UI.dur === 's' ? w.dur <= 45 : UI.dur === 'm' ? w.dur > 45 && w.dur <= 75 : w.dur > 75);
+    const list = W.LIB.filter(w => inDur(w) && (UI.goal === 'all' || (UI.goal === 'hard' ? w.hard : w.goal === UI.goal))).sort((a, b) => a.dur - b.dur);
     const plan = (P.plan || []).filter(p => p.date >= today() && byId(p.wid)).sort((a, b) => (a.date < b.date ? -1 : 1));
     let h = '<div class="row spread"><h2>Allenamenti</h2><span class="small mut">' + W.LIB.length + ' workout · target calcolati su FTP ' + (P.ftp ? P.ftp + ' W' : 'non impostata') + '</span></div>';
     if (!P.ftp) h += '<p class="note warn">FTP non impostata: vedi solo le percentuali. Inseriscila in <a href="#impostazioni">Impostazioni</a> per avere i watt.</p>';
     h += '<div class="card"><h3>In programma</h3>' + (plan.length ? '<div class="tw"><table><tbody>' + plan.map(p => { const w = byId(p.wid); return '<tr><td>' + dmy(p.date) + (p.date === today() ? ' <span class="badge virt">oggi</span>' : '') + '</td><td class="name">' + esc(w.name) + '<span class="badge">' + esc(goalName(w.goal)) + '</span></td><td class="r">' + w.dur + ' min</td><td class="r"><button class="btn sm pri" data-act="pick" data-v="' + w.id + '">Apri</button> <button class="btn sm ghost" data-act="unplan" data-v="' + p.id + '">Rimuovi</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="empty">Niente in programma. Usa «Programma» su un workout per fissarlo a una data.</p>') + '</div>';
-    h += '<div class="card"><div class="row"><div class="seg" role="group" aria-label="Durata">' + [40, 60, 90].map(d => '<button class="' + (UI.dur === d ? 'on' : '') + '" data-act="dur" data-v="' + d + '">' + d + ' min</button>').join('') + '</div></div><div class="chips" role="group" aria-label="Obiettivo"><button class="chip' + (UI.goal === 'all' ? ' on' : '') + '" data-act="goal" data-v="all">Tutti</button>' + W.GOALS.map(g => '<button class="chip' + (UI.goal === g.id ? ' on' : '') + '" data-act="goal" data-v="' + g.id + '">' + g.name + '</button>').join('') + '</div></div>';
-    h += '<div class="wgrid">' + list.map(wkCard).join('') + '</div>';
+    h += '<div class="card"><div class="row"><div class="seg" role="group" aria-label="Durata">' + [['s', 'fino a 45′'], ['m', '46–75′'], ['l', 'oltre 75′'], ['all', 'Tutte']].map(d => '<button class="' + (UI.dur === d[0] ? 'on' : '') + '" data-act="dur" data-v="' + d[0] + '">' + d[1] + '</button>').join('') + '</div><span class="small mut">' + list.length + ' workout</span></div><div class="chips" role="group" aria-label="Obiettivo"><button class="chip' + (UI.goal === 'all' ? ' on' : '') + '" data-act="goal" data-v="all">Tutti</button><button class="chip' + (UI.goal === 'hard' ? ' on' : '') + '" data-act="goal" data-v="hard">🔥 Più duri</button>' + W.GOALS.map(g => '<button class="chip' + (UI.goal === g.id ? ' on' : '') + '" data-act="goal" data-v="' + g.id + '">' + g.name + '</button>').join('') + '</div></div>';
+    h += list.length ? '<div class="wgrid">' + list.map(wkCard).join('') + '</div>' : '<p class="empty">Nessun workout con questi filtri: prova un’altra durata.</p>';
     h += '<p class="small mut">Altezza dei blocchi = intensità rispetto alla FTP (linea tratteggiata = 100%). IF e TSS «previsti» derivano dai soli target e non sono dati misurati.</p>';
     return h;
   }
@@ -1830,13 +1914,13 @@ details summary { cursor: pointer; }
       L.lastSec = whole;
       if (pw != null || hr != null) { L.t.push(whole); L.ts.push(Date.now()); L.w.push(pw); L.h.push(hr); L.c.push(cad); }
     }
-    setT('cs-tw', String(tw)); setT('cs-tp', pct(b.p) + ' FTP' + (L.kg ? ' · ' + nf(tw / L.kg, 2) + ' W/kg' : ' · FTP ' + L.ftp + ' W'));
+    setT('cs-tw', String(tw)); setT('cs-tp', (b.c ? b.c + ' rpm · ' : '') + pct(b.p) + ' FTP' + (L.kg ? ' · ' + nf(tw / L.kg, 2) + ' W/kg' : ' · FTP ' + L.ftp + ' W'));
     const pe = document.getElementById('cs-pw');
     if (pe) { const c = 'num' + (pw == null ? ' na' : ''); if (pe.className !== c) pe.className = c; }
     setT('cs-pw', pw == null ? 'n/d' : String(Math.round(pw)));
     setT('cs-cad', L.mode !== 'rivo' ? 'nessun sensore di potenza' : (T.state === 'lost' ? 'segnale del rullo perso' : T.state !== 'on' ? 'rullo non collegato' : cad != null ? Math.round(cad) + ' rpm' : pw == null ? 'in attesa di dati' : ''));
     setT('cs-it', W.fmtTime(Math.ceil(loc.left))); setT('cs-il', W.blockLabel(b) + ' · resta'); const nxb = L.wk.blocks[loc.idx + 1];
-    setT('cs-in', nxb ? 'poi ' + W.fmtTime(nxb.d) + ' a ' + W.targetWatts(L.ftp, nxb.p) + ' W' : 'ultimo intervallo');
+    setT('cs-in', nxb ? 'poi ' + W.fmtTime(nxb.d) + ' a ' + W.targetWatts(L.ftp, nxb.p) + ' W' + (nxb.c ? ' · ' + nxb.c + ' rpm' : '') : 'ultimo intervallo');
     const itc = document.getElementById('cs-itc'); if (itc) itc.style.borderTopColor = 'var(--z' + W.zoneOfFrac(b.p) + ')';
     const he = document.getElementById('cs-hr');
     if (he) { const c = 'num' + (hr == null ? ' na' : ''); if (he.className !== c) he.className = c; }
@@ -1920,10 +2004,18 @@ details summary { cursor: pointer; }
       if (P.autoUp && swOn()) swUpload(rec.id);
     } else if (saveIt) openModal('<div class="row spread"><h2>Sessione non salvata</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>È durata meno di un minuto.</p>');
   }
+  function rampBox(rec) {
+    const wk = byId(rec.wid);
+    if (!wk || !wk.test) return '';
+    const best = rec.curve && rec.curve[60];
+    if (!best) return '<p class="note warn">Test a rampa senza potenza misurata: per calcolare la FTP serve il Rivo collegato.</p>';
+    const est = Math.round(best * 0.75);
+    return '<div class="exb"><span class="exl">Risultato del test</span><p>Miglior minuto: <b>' + best + ' W</b> · FTP stimata (75%): <b>' + est + ' W</b>' + (rec.kg ? ' · ' + nf(est / rec.kg, 2) + ' W/kg' : '') + '</p><div class="row"><button class="btn pri" data-act="useTestFtp" data-v="' + est + '">Usa ' + est + ' W come FTP</button></div><p class="small mut">Il 75% del miglior minuto è la regola usata dai test a rampa: è una stima, tende a sovrastimare chi è forte sugli sforzi brevi.</p></div>';
+  }
   function doneBody(rec) {
       const completed = rec.completed;
       const l = rec.np != null ? W.load({ np: rec.np, pSec: rec.pSec }, rec.ftp) : null;
-      return ('<div class="row spread"><h2>' + (completed ? 'Allenamento concluso' : 'Sessione terminata') + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="mut">' + esc(rec.name) + ' · ' + (rec.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + ' · FTP ' + rec.ftp + ' W' + (rec.kg ? ' (' + nf(rec.ftp / rec.kg, 2) + ' W/kg a ' + nf(rec.kg, 1) + ' kg)' : '') + '</p><div class="kv"><div><span>Svolto</span><b>' + W.fmtTime(rec.elapsed) + '</b></div><div><span>Completato</span><b>' + nf(rec.pct) + '%</b></div><div><span>Pot. media</span><b>' + (rec.avgP != null ? rec.avgP + ' W' : 'n/d') + '</b></div><div><span>W/kg medi</span><b>' + (rec.avgP != null && rec.kg ? nf(rec.avgP / rec.kg, 2) : 'n/d') + '</b></div><div><span>Calorie</span><b>' + (rec.avgP != null ? '≈ ' + nf(rec.avgP * rec.pSec / 1000) : 'n/d') + '</b></div><div><span>NP</span><b>' + (rec.np != null ? rec.np + ' W' : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (rec.avgHr != null ? rec.avgHr : 'n/d') + '</b></div></div><p class="small mut">' + (rec.avgP == null ? 'Nessun sensore di potenza collegato: la potenza effettiva non è stata registrata e il target non la sostituisce. ' : 'Potenza registrata per ' + W.fmtTime(rec.pSec) + '. ') + 'La sessione è salvata in WATT.</p>' + sessActions(rec));
+      return ('<div class="row spread"><h2>' + (completed ? 'Allenamento concluso' : 'Sessione terminata') + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="mut">' + esc(rec.name) + ' · ' + (rec.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + ' · FTP ' + rec.ftp + ' W' + (rec.kg ? ' (' + nf(rec.ftp / rec.kg, 2) + ' W/kg a ' + nf(rec.kg, 1) + ' kg)' : '') + '</p><div class="kv"><div><span>Svolto</span><b>' + W.fmtTime(rec.elapsed) + '</b></div><div><span>Completato</span><b>' + nf(rec.pct) + '%</b></div><div><span>Pot. media</span><b>' + (rec.avgP != null ? rec.avgP + ' W' : 'n/d') + '</b></div><div><span>W/kg medi</span><b>' + (rec.avgP != null && rec.kg ? nf(rec.avgP / rec.kg, 2) : 'n/d') + '</b></div><div><span>Calorie</span><b>' + (rec.avgP != null ? '≈ ' + nf(rec.avgP * rec.pSec / 1000) : 'n/d') + '</b></div><div><span>NP</span><b>' + (rec.np != null ? rec.np + ' W' : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (rec.avgHr != null ? rec.avgHr : 'n/d') + '</b></div></div><p class="small mut">' + (rec.avgP == null ? 'Nessun sensore di potenza collegato: la potenza effettiva non è stata registrata e il target non la sostituisce. ' : 'Potenza registrata per ' + W.fmtTime(rec.pSec) + '. ') + 'La sessione è salvata in WATT.</p>' + rampBox(rec) + sessActions(rec));
   }
 
   /* ---------- Portare una sessione su Strava ---------- */
@@ -2288,7 +2380,7 @@ details summary { cursor: pointer; }
     cat: v => { UI.cat = v; render(); },
     detail: v => openDetail(v),
     close: () => closeModal(),
-    dur: v => { UI.dur = +v; render(); },
+    dur: v => { UI.dur = v; render(); },
     goal: v => { UI.goal = v; render(); },
     toggle: v => { UI.open[v] = !UI.open[v]; render(); },
     pick: v => { UI.sel = v; LS.set('watt.sel', v); location.hash = '#consolle'; if (UI.view === 'consolle') render(); },
@@ -2314,6 +2406,7 @@ details summary { cursor: pointer; }
     saveHr: () => { const z = [0, 1, 2, 3].map(i => numVal('in-hz' + i)); if (z.some(v => v == null) || !(z[0] < z[1] && z[1] < z[2] && z[2] < z[3])) return openModal('<div class="row spread"><h2>Zone non valide</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Servono quattro limiti crescenti in bpm.</p>'); P.hrz = z.map(Math.round); P.hrSrc = 'manuale'; save(); render(); },
     useStravaHr: () => { if (strava.hrz) { P.hrz = strava.hrz.slice(); P.hrSrc = 'strava'; save(); render(); } },
     clearActs: () => { acts = {}; ans = {}; syncInfo = { at: null }; LS.del('watt.acts'); LS.del('watt.an'); LS.del('watt.sync'); setSync('idle', ''); render(); },
+    useTestFtp: v => { const n = +v; if (n >= 50 && n <= 600) { setFtp(n, 'test'); closeModal(); render(); } },
     addKg: () => { const v = numVal('in-kg'), e = document.getElementById('in-kd'), d = e && e.value; if (v == null || v < 30 || v > 250 || !d || d > today()) return openModal('<div class="row spread"><h2>Peso non valido</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>Servono una data non futura e un peso tra 30 e 250 kg.</p>'); setKg(d, v, 'manuale'); save(); render(); },
     delKg: v => { P.weights = (P.weights || []).filter(x => x.date !== v); save(); render(); },
     copyNote: (v, b) => { const w = byId(v); if (w) copyText(W.stravaNote(w, P.ftp), b); },
