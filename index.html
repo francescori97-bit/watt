@@ -1863,7 +1863,7 @@ details summary { cursor: pointer; }
       const st = W.planStats(w.blocks);
       h += '<div class="card"><div class="row spread"><h3>' + esc(goalName(w.goal)) + ' · ' + w.dur + ' min</h3><a href="#allenamenti" class="small">Cambia workout</a></div><div class="row spread"><h2 style="text-transform:none">' + esc(w.name) + '</h2></div><p class="mut">' + esc(w.desc) + '</p><p class="why">' + esc(w.why) + '</p>' + wkSvg(w.blocks) + '<div class="kv"><div><span>FTP della sessione</span><b>' + (P.ftp ? P.ftp + ' W' : '—') + '</b></div><div><span>IF previsto</span><b>' + nf(st.IF, 2) + '</b></div><div><span>TSS previsto</span><b>' + nf(st.tss) + '</b></div></div>' + explain(w, P.ftp) + '</div>';
     } else h += '<div class="card"><h3>Nessun workout selezionato</h3><p>Scegli un allenamento dalla libreria, poi torna qui per avviarlo.</p><div><a class="btn pri" href="#allenamenti" style="display:inline-flex;align-items:center;text-decoration:none">Vai agli allenamenti</a></div></div>';
-    h += '<div class="card"><h3>Dispositivi</h3>' + devicesBlock() + '<div class="row">' + (P.mode === 'rivo' ? '<label class="check"><input type="checkbox" id="opt-erg" data-chg="erg"' + (P.erg ? ' checked' : '') + '>Controllo ERG (il rullo segue il target)</label>' : '') + '<label class="check"><input type="checkbox" id="opt-voice" data-chg="voice"' + (P.voice ? ' checked' : '') + '>Avvisi vocali</label></div></div>';
+    h += '<div class="card"><h3>Dispositivi</h3>' + devicesBlock() + '<div class="row">' + (P.mode === 'rivo' ? '<label class="check"><input type="checkbox" id="opt-erg" data-chg="erg"' + (P.erg ? ' checked' : '') + '>Controllo ERG (il rullo segue il target)</label>' : '') + '<label class="check"><input type="checkbox" id="opt-voice" data-chg="voice"' + (P.voice ? ' checked' : '') + '>Avvisi vocali</label></div>' + (P.voice ? '<div class="row" style="align-items:flex-end">' + voiceSelect('cs-voice') + '</div>' : '') + '</div>';
     h += '<div><button class="btn pri" data-act="start" style="min-height:56px;font-size:18px;padding:0 28px"' + (w && P.ftp ? '' : ' disabled') + '>Avvia allenamento</button>' + (w && !P.ftp ? ' <span class="small mut">Imposta prima la FTP in Impostazioni.</span>' : '') + '</div>';
     const ss = P.sessions || [];
     h += '<div class="card"><h3>Sessioni registrate in WATT (' + ss.length + ')</h3>' + (ss.length ? '<div class="tw"><table><thead><tr><th>Data</th><th>Workout</th><th class="r">Svolto</th><th class="r">Completato</th><th class="r">FTP</th><th class="r">Pot. media</th><th class="r">NP</th><th class="r">FC media</th><th></th></tr></thead><tbody>' + ss.slice(0, 30).map(s => '<tr><td>' + dmy(s.date) + '</td><td class="name">' + esc(s.name) + '<span class="badge">' + (s.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + '</span></td><td class="r">' + W.fmtTime(s.elapsed) + '</td><td class="r">' + nf(s.pct) + '%</td><td class="r">' + s.ftp + ' W</td><td class="r">' + (s.avgP != null ? nf(s.avgP) + ' W' : 'n/d') + '</td><td class="r">' + (s.np != null ? nf(s.np) + ' W' : '—') + '</td><td class="r">' + (s.avgHr != null ? nf(s.avgHr) : 'n/d') + '</td><td class="r">' + (s.stravaId ? '<a class="btn sm" style="display:inline-flex;align-items:center;text-decoration:none" href="https://www.strava.com/activities/' + esc(s.stravaId) + '" target="_blank" rel="noopener">Su Strava</a> ' : swOn() ? '<button class="btn sm pri" data-act="upload" data-v="' + esc(s.id) + '"' + (s.upState === 'run' ? ' disabled' : '') + '>Carica</button> ' : '') + (hasSmp(s.id) ? '<button class="btn sm" data-act="tcx" data-v="' + esc(s.id) + '">File .tcx</button> ' : '') + '<button class="btn sm" data-act="img" data-v="' + esc(s.id) + '">Immagine</button> <button class="btn sm" data-act="copySess" data-v="' + esc(s.id) + '">Nota</button> <button class="btn sm ghost" data-act="delSession" data-v="' + esc(s.id) + '">Elimina</button></td></tr>').join('') + '</tbody></table></div>' : '<p class="empty">Ancora nessuna sessione.</p>') + '<p class="small mut">Qui ci sono solo i dati rilevati dai sensori durante la sessione. Restano separati dalle attività importate da Strava e non entrano nei totali della Dashboard, così la stessa pedalata non viene contata due volte. Per portarle su Strava usa «File .tcx» e «Nota».</p></div>';
@@ -1872,10 +1872,42 @@ details summary { cursor: pointer; }
 
   /* ---------- Sessione dal vivo ---------- */
   let tickId = null, wake = null, lastBeat = 0, lastSave = 0;
-  function say(t) {
-    if (!P.voice) return;
-    try { if (!('speechSynthesis' in window)) return; const u = new SpeechSynthesisUtterance(t); u.lang = 'it-IT'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) { /* voce non disponibile */ }
+  /* Voci del sistema: si sceglie tra quelle installate sul dispositivo; "automatica" prende la migliore in italiano */
+  function allVoices() { try { return ('speechSynthesis' in window) ? window.speechSynthesis.getVoices() : []; } catch (e) { return []; } }
+  function voiceScore(v) {
+    const n = (v.name || '').toLowerCase();
+    let sc = /^it/i.test(v.lang || '') ? 100 : 0;
+    if (/natural|neural|premium|enhanced|wavenet|online/.test(n)) sc += 30;
+    if (/google/.test(n)) sc += 20;
+    if (v.localService === false) sc += 5;
+    if (/compact|espeak/.test(n)) sc -= 40;
+    return sc;
   }
+  function itVoices() { const all = allVoices(), it = all.filter(v => /^it/i.test(v.lang || '')); return (it.length ? it : all).slice().sort((a, b) => voiceScore(b) - voiceScore(a)); }
+  function pickVoice() {
+    const vs = allVoices();
+    if (P.voiceName) { const v = vs.find(x => x.name === P.voiceName); if (v) return v; }
+    return itVoices()[0] || null;
+  }
+  function say(t, force) {
+    if (!P.voice && !force) return;
+    try {
+      if (!('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(t), v = pickVoice();
+      u.lang = v ? v.lang : 'it-IT'; if (v) u.voice = v;
+      u.rate = P.voiceRate || 1;
+      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    } catch (e) { /* voce non disponibile */ }
+  }
+  function voiceSelect(id) {
+    if (!('speechSynthesis' in window)) return '<span class="small mut">Sintesi vocale non disponibile in questo browser.</span>';
+    const vs = itVoices(), best = vs[0];
+    const opts = '<option value="">Automatica' + (best ? ' (' + esc(best.name) + ')' : '') + '</option>' + vs.map(v => '<option value="' + esc(v.name) + '"' + (P.voiceName === v.name ? ' selected' : '') + '>' + esc(v.name) + (v.localService === false ? ' · online' : '') + '</option>').join('');
+    return '<div class="field"><label for="' + id + '">Voce</label><select id="' + id + '" data-chg="voiceName" style="max-width:280px">' + opts + '</select></div>' +
+      '<div class="field"><label for="' + id + '-r">Velocità</label><select id="' + id + '-r" data-chg="voiceRate" style="max-width:120px">' + [[0.9, 'Lenta'], [1, 'Normale'], [1.15, 'Veloce']].map(r => '<option value="' + r[0] + '"' + ((P.voiceRate || 1) === r[0] ? ' selected' : '') + '>' + r[1] + '</option>').join('') + '</select></div>' +
+      '<button class="btn sm" data-act="testVoice">Prova voce</button>';
+  }
+  try { if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = () => { if (!live && (UI.view === 'impostazioni' || UI.view === 'consolle')) { const a = document.activeElement; if (!a || a.tagName !== 'SELECT') render(); } }; } catch (e) { /* niente */ }
   async function wakeOn() { try { if (navigator.wakeLock) { wake = await navigator.wakeLock.request('screen'); } } catch (e) { wake = null; } }
   function wakeOff() { try { if (wake) wake.release(); } catch (e) { /* niente */ } wake = null; }
   function spokenDur(sec) { const m = Math.floor(sec / 60), s = sec % 60; return (m ? m + (m === 1 ? ' minuto' : ' minuti') : '') + (m && s ? ' e ' : '') + (s ? s + ' secondi' : ''); }
@@ -2287,7 +2319,7 @@ details summary { cursor: pointer; }
       const dl = await use('downloads');
       if (!dl) throw { code: 'unavailable' };
       const files = await Promise.all(['style.css', 'core.js', 'app.js'].map(f => fetch(f).then(r => { if (!r.ok) throw { code: 'fetch' }; return r.text(); })));
-      const seed = { ftp: P.ftp, ftpHist: P.ftpHist, hrz: P.hrz, hrSrc: P.hrSrc, restHr: P.restHr, lthr: P.lthr, weights: P.weights, mode: P.mode, voice: P.voice, erg: P.erg, plan: P.plan };
+      const seed = { ftp: P.ftp, ftpHist: P.ftpHist, hrz: P.hrz, hrSrc: P.hrSrc, restHr: P.restHr, lthr: P.lthr, weights: P.weights, mode: P.mode, voice: P.voice, voiceName: P.voiceName, voiceRate: P.voiceRate, erg: P.erg, plan: P.plan };
       await dl.save({ filename: 'watt-consolle.html', data: buildStandalone(files[0], files[1], files[2], seed) });
     } catch (e) {
       if (e && e.code === 'declined') return;
@@ -2329,7 +2361,7 @@ details summary { cursor: pointer; }
       h += '</div>';
     }
     if (!SA) h += '<div class="card"><h3>Strava</h3><div class="status" id="syncline">' + syncLine() + '</div><div class="row" style="align-items:flex-end"><div class="field"><label for="in-months">Storico da importare</label><select id="in-months" data-chg="months"><option value="6"' + (P.months === 6 ? ' selected' : '') + '>6 mesi</option><option value="12"' + (P.months === 12 ? ' selected' : '') + '>12 mesi</option><option value="24"' + (P.months === 24 ? ' selected' : '') + '>24 mesi</option></select></div><button class="btn pri" data-act="sync">Sincronizza ora</button><button class="btn ghost" data-act="clearActs">Svuota attività importate</button></div><p class="small mut">Il collegamento passa dal connettore Strava del tuo account Claude: nessun Client Secret, nessun token e nessun Callback Domain in questa pagina. È in sola lettura, quindi WATT non può caricare sessioni su Strava. L’importazione è incrementale e senza duplicati: ogni attività è salvata una sola volta con il suo identificativo Strava. Le attività importate restano in questo browser e si riscaricano su un altro dispositivo.</p></div>';
-    h += '<div class="card"><h3>Avvisi e salvataggio</h3><div class="row"><label class="check"><input type="checkbox" id="set-voice" data-chg="voice"' + (P.voice ? ' checked' : '') + '>Avvisi vocali a inizio sessione, cambio intervallo e conclusione</label><button class="btn sm" data-act="testVoice">Prova voce</button></div><div class="status"><span class="dot ' + (UI.store === 'account' ? 'ok' : 'run') + '"></span><span>' + (SA ? 'Consolle autonoma: impostazioni e sessioni restano in questo browser. FTP e zone sono quelle che avevi in WATT quando l’hai scaricata.' : UI.store === 'account' ? 'FTP, zone, programma e sessioni sono salvati nel tuo spazio privato di questa pagina e ti seguono su ogni dispositivo.' : 'FTP, zone, programma e sessioni sono salvati solo in questo browser' + (UI.storeErr ? ' (salvataggio sull’account non riuscito: ' + esc(UI.storeErr) + ')' : '') + '.') + '</span></div></div>';
+    h += '<div class="card"><h3>Avvisi e salvataggio</h3><div class="row"><label class="check"><input type="checkbox" id="set-voice" data-chg="voice"' + (P.voice ? ' checked' : '') + '>Avvisi vocali a inizio sessione, cambio intervallo e conclusione</label></div><div class="row" style="align-items:flex-end">' + voiceSelect('set-voicen') + '</div><p class="small mut">Le voci sono quelle installate sul dispositivo. Su Android le migliori sono le voci Google: se ne vedi poche, installale da Impostazioni di Android → Sistema → Lingue → Sintesi vocale → Motore Google → Installa dati vocali → Italiano.</p><div class="status"><span class="dot ' + (UI.store === 'account' ? 'ok' : 'run') + '"></span><span>' + (SA ? 'Consolle autonoma: impostazioni e sessioni restano in questo browser. FTP e zone sono quelle che avevi in WATT quando l’hai scaricata.' : UI.store === 'account' ? 'FTP, zone, programma e sessioni sono salvati nel tuo spazio privato di questa pagina e ti seguono su ogni dispositivo.' : 'FTP, zone, programma e sessioni sono salvati solo in questo browser' + (UI.storeErr ? ' (salvataggio sull’account non riuscito: ' + esc(UI.storeErr) + ')' : '') + '.') + '</span></div></div>';
     return h;
   }
 
@@ -2418,7 +2450,7 @@ details summary { cursor: pointer; }
     swOff: () => { const t = SW && SW.access; SW = null; LS.del('watt.sw'); if (t) fetch(SAPI + '/oauth/deauthorize', { method: 'POST', headers: { Authorization: 'Bearer ' + t } }).catch(() => {}); render(); },
     getSA: () => getStandalone(),
     saveHrRef: () => { const r = numVal('in-rest'), t = numVal('in-lthr'); if (r == null || r < 30 || r > 100 || (t != null && (t <= r + 20 || t > 220))) return openModal('<div class="row spread"><h2>Valori non validi</h2><button class="btn sm" data-act="close">Chiudi</button></div><p>FC a riposo tra 30 e 100 bpm; la FC di soglia, se indicata, deve essere ben sopra quella a riposo.</p>'); P.restHr = Math.round(r); P.lthr = t == null ? null : Math.round(t); save(); render(); },
-    testVoice: () => { const was = P.voice; P.voice = true; say('Avvisi vocali attivi.'); P.voice = was; }
+    testVoice: () => { say('Soglia, dieci minuti, centottantasei watt.', true); }
   };
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-act]');
@@ -2427,10 +2459,12 @@ details summary { cursor: pointer; }
   });
   document.addEventListener('change', e => {
     const k = e.target.dataset && e.target.dataset.chg; if (!k) return;
-    if (k === 'voice') { P.voice = !!e.target.checked; save(); }
+    if (k === 'voice') { P.voice = !!e.target.checked; save(); if (UI.view === 'consolle' && !live) render(); }
     else if (k === 'erg') { P.erg = !!e.target.checked; save(); }
     else if (k === 'months') { P.months = +e.target.value || 6; save(); }
     else if (k === 'autoUp') { P.autoUp = !!e.target.checked; save(); }
+    else if (k === 'voiceName') { P.voiceName = e.target.value || null; save(); say('Voce selezionata.', true); }
+    else if (k === 'voiceRate') { P.voiceRate = +e.target.value || 1; save(); say('Velocità aggiornata.', true); }
     else if (k === 'renpho') importRenpho(e.target);
   });
   const tip = $('#tip');

@@ -1,6 +1,6 @@
 /* WATT: funziona anche senza rete. Le pagine dell'app vengono prese prima dalla rete (aggiornamenti subito),
    e dalla copia salvata quando la rete manca. Le chiamate a Strava non vengono mai salvate. */
-const CACHE = 'watt-202611231200';
+const CACHE = 'watt-202611231206';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
