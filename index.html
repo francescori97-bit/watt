@@ -1129,6 +1129,40 @@ details summary { cursor: pointer; }
   };
   W.wkg = (watts, kg) => (watts != null && kg ? watts / kg : null);
 
+
+  /* ---------- Corsa: migliori tempi sulle distanze ---------- */
+  W.RUN_D = [400, 1000, 1609.34, 5000, 10000, 21097.5, 42195];
+  W.RUN_LAB = { 400: '400 m', 1000: '1 km', 1609.34: '1 miglio', 5000: '5 km', 10000: '10 km', 21097.5: 'Mezza', 42195: 'Maratona' };
+  W.RUN_PR = { Fastest400: 400, Fastest1k: 1000, FastestMile: 1609.34, Fastest5k: 5000, Fastest10k: 10000, FastestHalfMarathon: 21097.5, FastestMarathon: 42195 };
+  /* Tempo più breve per coprire ogni distanza, dalle serie tempo/distanza, interpolando il punto d'arrivo.
+     Tempo trascorso (soste incluse), come i best effort di Strava. Scarta finestre più veloci di 7,5 m/s (errori GPS). */
+  W.runCurve = function (time, dist) {
+    const out = {};
+    if (!time || !dist || time.length !== dist.length || time.length < 2) return out;
+    const n = dist.length, t = [], d = [];
+    for (let i = 0; i < n; i++) { if (dist[i] == null || time[i] == null || !isFinite(dist[i])) continue; if (d.length && dist[i] < d[d.length - 1]) continue; d.push(dist[i]); t.push(time[i]); }
+    const m = d.length;
+    if (m < 2) return out;
+    for (const D of W.RUN_D) {
+      if (d[m - 1] - d[0] < D) continue;
+      let best = null, j = 1;
+      for (let i = 0; i < m; i++) {
+        const goal = d[i] + D;
+        if (j <= i) j = i + 1;
+        while (j < m && d[j] < goal) j++;
+        if (j >= m) break;
+        const span = d[j] - d[j - 1];
+        const tj = span > 0 ? t[j - 1] + (t[j] - t[j - 1]) * (goal - d[j - 1]) / span : t[j];
+        const dt = tj - t[i];
+        if (dt <= 0 || D / dt > 7.5) continue;
+        if (best == null || dt < best) best = dt;
+      }
+      if (best != null) out[D] = Math.round(best);
+    }
+    return out;
+  };
+  W.paceTxt = (sec, D) => { const p = sec / (D / 1000); const m = Math.floor(p / 60), s = Math.round(p - m * 60); return (s === 60 ? (m + 1) + ':00' : m + ':' + (s < 10 ? '0' : '') + s) + ' /km'; };
+
   W.fmtTime = function (sec) {
     sec = Math.max(0, Math.round(sec));
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -1292,6 +1326,12 @@ details summary { cursor: pointer; }
         if (Array.isArray(z.heart_rate_zones) && z.heart_rate_zones.length >= 5) strava.hrz = z.heart_rate_zones.slice(0, 4).map(x => x.max);
       }
       try { const pr = await sv('get_athlete_profile', {}); if (pr && pr.weight) strava.weight = pr.weight; strava.focus = pr && pr.current_focus && pr.current_focus.open_text ? { text: pr.current_focus.open_text, until: String(pr.current_focus.expires_at_local || '').slice(0, 10) } : null; } catch (e) { if (DENIED.indexOf(e && e.code) >= 0 && e.code !== 'scope') throw e; }
+      if (!SA) {
+        try {
+          const be = await sv('get_athlete_best_efforts', { sports: ['Run'], best_effort_types: Object.keys(W.RUN_PR) });
+          if (be && Array.isArray(be.efforts)) { strava.runPr = {}; be.efforts.forEach(e => { const D = W.RUN_PR[e.best_effort_type]; if (D && e.value > 0) strava.runPr[D] = { s: e.value, date: e.date, id: String(e.activity_id || '') }; }); }
+        } catch (e) { if (DENIED.indexOf(e && e.code) >= 0 && e.code !== 'not_in_manifest') throw e; }
+      }
       LS.set('watt.strava', strava);
       if (P.ftp == null && strava.ftp) setFtp(strava.ftp, 'strava');
       if (!P.hrz && strava.hrz) { P.hrz = strava.hrz.slice(); P.hrSrc = 'strava'; save(); }
@@ -1321,15 +1361,20 @@ details summary { cursor: pointer; }
   }
   const STREAMS = ['time', 'watts', 'heart_rate', 'cadence'];
   const WEEK = 7 * 864e5;
+  const isRun = a => a && ['Run', 'TrailRun', 'VirtualRun'].indexOf(a.sport) >= 0;
+  const needsAn = a => !ans[a.id] || ans[a.id].v !== 2 || (isRun(a) && a.dist > 0 && !ans[a.id].rcv);
   async function analyzeOne(id) {
-    const st = await sv('get_activity_streams', { activity_id: String(id), streams: STREAMS }, { cache: { staleTime: WEEK, gcTime: WEEK } });
-    const an = W.analyze(st && typeof st === 'object' ? st : null);
+    const run = isRun(acts[id]);
+    const st = await sv('get_activity_streams', { activity_id: String(id), streams: run ? STREAMS.concat(['distance']) : STREAMS }, { cache: { staleTime: WEEK, gcTime: WEEK } });
+    const ok = st && typeof st === 'object';
+    const an = W.analyze(ok ? st : null);
+    if (run) { an.rc = ok ? W.runCurve(st.time, st.distance) : {}; an.rcv = 1; }
     ans[id] = an;
     return an;
   }
   async function analyzeQueue() {
     const lim = Date.now() - P.months * 30.44 * 864e5;
-    const q = Object.values(acts).filter(a => Date.parse(a.start) >= lim && !(ans[a.id] && ans[a.id].v === 2)).sort((a, b) => (a.start < b.start ? 1 : -1)).slice(0, SA ? 80 : 250);
+    const q = Object.values(acts).filter(a => Date.parse(a.start) >= lim && needsAn(a)).sort((a, b) => (a.start < b.start ? 1 : -1)).slice(0, SA ? 80 : 250);
     let fail = 0;
     for (let i = 0; i < q.length; i++) {
       setSync('run', 'Analizzo potenza e FC delle attività… ' + (i + 1) + '/' + q.length);
@@ -1603,6 +1648,57 @@ details summary { cursor: pointer; }
   }
   const kcalTxt = k => (k ? (k.est ? '≈ ' : '') + nf(k.v) : '—');
 
+  /* ---------- Curva di corsa ---------- */
+  function runBest(days) {
+    const st = Date.now() - days * 864e5, best = {};
+    let n = 0, done = 0;
+    for (const a of Object.values(acts)) {
+      if (!isRun(a) || !(a.dist > 0) || Date.parse(a.start) < st) continue;
+      n++;
+      const an = ans[a.id];
+      if (!an || !an.rcv) continue;
+      done++;
+      for (const D in an.rc || {}) if (!best[D] || an.rc[D] < best[D].s) best[D] = { s: an.rc[D], a: a };
+    }
+    return { best: best, n: n, done: done };
+  }
+  function svgRun(best, pr, w) {
+    const pts = W.RUN_D.filter(D => best[D]).map(D => ({ D: D, s: best[D].s, a: best[D].a }));
+    const prs = pr ? W.RUN_D.filter(D => pr[D]).map(D => ({ D: D, s: pr[D].s, date: pr[D].date })) : [];
+    if (!pts.length && !prs.length) return '<p class="empty">Nessuna corsa con distanza nel periodo scelto.</p>';
+    const pace = p => p.s / (p.D / 1000);
+    const all = pts.concat(prs).map(pace);
+    const lo = Math.floor(Math.min.apply(null, all) / 15) * 15 - 15, hi = Math.ceil(Math.max.apply(null, all) / 15) * 15 + 15;
+    const h = 240, m = { t: 26, r: 22, b: 24, l: 48 };
+    const lx = D => (Math.log(D) - Math.log(400)) / (Math.log(42195) - Math.log(400));
+    const X = D => m.l + lx(D) * (w - m.l - m.r), Y = p => m.t + ((p - lo) / (hi - lo)) * (h - m.t - m.b);
+    const pm = p => Math.floor(p / 60) + ':' + ((Math.round(p) % 60) < 10 ? '0' : '') + (Math.round(p) % 60);
+    let s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Curva di corsa: passo migliore per distanza, più in alto è più veloce">';
+    const step = (hi - lo) > 120 ? 60 : 30;
+    for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) s += '<line x1="' + m.l + '" x2="' + (w - m.r) + '" y1="' + Y(g) + '" y2="' + Y(g) + '" stroke="#3a3f4b"/><text x="' + (m.l - 5) + '" y="' + (Y(g) + 4) + '" text-anchor="end">' + pm(g) + '</text>';
+    s += '<text x="' + (m.l - 5) + '" y="' + (m.t - 10) + '" text-anchor="end">/km</text>';
+    if (prs.length) {
+      s += '<path d="' + prs.map((p, i) => (i ? 'L' : 'M') + X(p.D).toFixed(1) + ' ' + Y(pace(p)).toFixed(1)).join(' ') + '" fill="none" stroke="#9ba3b0" stroke-width="1.5" stroke-dasharray="5 5"/>';
+      for (const p of prs) s += '<g data-tip="' + esc('Record di sempre ' + W.RUN_LAB[p.D] + ': ' + W.fmtTime(p.s) + ' (' + W.paceTxt(p.s, p.D) + ') · ' + dmy(p.date)) + '"><circle cx="' + X(p.D) + '" cy="' + Y(pace(p)) + '" r="12" fill="transparent"/><circle cx="' + X(p.D) + '" cy="' + Y(pace(p)) + '" r="4" fill="var(--bg)" stroke="#9ba3b0" stroke-width="2"/></g>';
+    }
+    if (pts.length) {
+      s += '<path d="' + pts.map((p, i) => (i ? 'L' : 'M') + X(p.D).toFixed(1) + ' ' + Y(pace(p)).toFixed(1)).join(' ') + '" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-linejoin="round"/>';
+      for (const p of pts) s += '<g data-tip="' + esc(W.RUN_LAB[p.D] + ': ' + W.fmtTime(p.s) + ' (' + W.paceTxt(p.s, p.D) + ') · ' + dmy(p.a.start) + ' · ' + p.a.name) + '"><circle cx="' + X(p.D) + '" cy="' + Y(pace(p)) + '" r="14" fill="transparent"/><circle cx="' + X(p.D) + '" cy="' + Y(pace(p)) + '" r="4.5" fill="var(--bg)" stroke="var(--acc)" stroke-width="2.5"/><text class="v" x="' + X(p.D) + '" y="' + (Y(pace(p)) - 10) + '" text-anchor="middle">' + W.fmtTime(p.s) + '</text></g>';
+    }
+    for (const D of W.RUN_D) s += '<text x="' + X(D) + '" y="' + (h - 6) + '" text-anchor="middle">' + W.RUN_LAB[D].replace('1 miglio', 'mi').replace('Maratona', 'Mar.') + '</text>';
+    return s + '</svg>';
+  }
+  function vRun() {
+    const r = runBest(UI.period), pr = SA ? null : strava.runPr;
+    if (!r.n && !pr) return '';
+    let h = '<div class="card" id="corsa"><h3>Curva di corsa</h3>' + chart(w => svgRun(r.best, pr, w));
+    h += '<div class="legend"><span><i style="background:var(--acc)"></i>Migliori del periodo</span>' + (pr ? '<span><i style="background:#9ba3b0"></i>Record di sempre (Strava)</span>' : '') + '</div>';
+    h += '<div class="tw"><table><thead><tr><th>Distanza</th><th class="r">Tempo</th><th class="r">Passo</th><th>Quando</th>' + (pr ? '<th class="r">Record di sempre</th>' : '') + '</tr></thead><tbody>' +
+      W.RUN_D.filter(D => r.best[D] || (pr && pr[D])).map(D => { const b = r.best[D], p = pr && pr[D], isPr = b && p && b.s <= p.s; return '<tr' + (b ? ' class="click" data-act="detail" data-v="' + esc(b.a.id) + '"' : '') + '><td><b>' + W.RUN_LAB[D] + '</b></td><td class="r">' + (b ? W.fmtTime(b.s) + (isPr ? ' <span class="badge virt">PR</span>' : '') : '—') + '</td><td class="r">' + (b ? W.paceTxt(b.s, D) : '—') + '</td><td>' + (b ? dmy(b.a.start) : '') + '</td>' + (pr ? '<td class="r">' + (p ? W.fmtTime(p.s) + ' · ' + dmy(p.date) : '—') + '</td>' : '') + '</tr>'; }).join('') + '</tbody></table></div>';
+    h += '<p class="small mut">Tempo più breve per coprire ogni distanza dentro una corsa, calcolato dalle serie di tempo e distanza (soste comprese, come Strava). Tratti oltre 7,5 m/s sono scartati come errori GPS. Corse analizzate nel periodo: ' + r.done + ' di ' + r.n + '.' + (pr ? ' I record di sempre sono quelli di Strava.' : ' I record di sempre di Strava si vedono nella versione su claude.ai; qui i migliori dello storico importato con il periodo 12 mesi.') + '</p></div>';
+    return h;
+  }
+
   /* ---------- Vista: Dashboard ---------- */
   function estFtp() {
     const lim = Date.now() - 90 * 864e5; let best = null;
@@ -1646,6 +1742,7 @@ details summary { cursor: pointer; }
       tile('TSS', cur.tssN ? nf(cur.tss) : '—', '', cur.tssN ? cur.tssN + ' sessioni con almeno 20 min di potenza' + (cur.approx ? ' · FTP attuale applicata a date senza FTP registrata' : '') : 'servono serie di potenza e una FTP') +
       '</div>';
     h += vLoad();
+    h += vRun();
     h += vWeight();
     h += '<div class="card"><h3>Volume per settimana (lun–dom)</h3>' + chart(w => svgWeeks(weeksData(days), w)) + '<div class="legend"><span><i style="background:var(--c-virt)"></i>Zwift / virtuale</span><span><i style="background:var(--c-indoor)"></i>Indoor</span><span><i style="background:var(--c-outdoor)"></i>Bici outdoor</span><span><i style="background:var(--c-other)"></i>Altri sport</span></div></div>';
     h += '<div class="grid2"><div class="card"><h3>Curva di potenza</h3>' + chart(w => svgCurve(cur.curve, w, P.ftp)) + curveTable(cur.curve) + '<p class="small mut">Migliore media per durata, calcolata dalle serie secondo per secondo di ogni attività. Una finestra vale solo se almeno il 95% dei suoi secondi ha un campione: pause e buchi di segnale non vengono riempiti.</p></div>';
@@ -1673,6 +1770,7 @@ details summary { cursor: pointer; }
         if (f) h += '<h3>Zone di potenza</h3>' + zoneRows(W.powerZoneSecs(an.ph, f.ftp), W.PZ.map(z => z.name), [1, 2, 3, 4, 5, 6, 7]);
       }
       if (an.hasHr && P.hrz) h += '<h3>Zone cardiache</h3>' + zoneRows(W.hrZoneSecs(an.hh, P.hrz), HZN, HZC);
+      if (an.rc && Object.keys(an.rc).length) h += '<h3>Migliori tempi in questa corsa</h3><div class="tw"><table><tbody>' + W.RUN_D.filter(D => an.rc[D]).map(D => '<tr><td>' + W.RUN_LAB[D] + '</td><td class="r"><b>' + W.fmtTime(an.rc[D]) + '</b></td><td class="r">' + W.paceTxt(an.rc[D], D) + '</td></tr>').join('') + '</tbody></table></div>';
       return h;
     };
     openModal(body());
@@ -2228,8 +2326,8 @@ details summary { cursor: pointer; }
         const list = (await sGet('/athlete/activities?per_page=100&page=' + page + '&after=' + after)) || [];
         p = { activities: list.map(a => ({ id: String(a.id), name: a.name, sport_type: a.sport_type || a.type, start_local: String(a.start_date_local || '').replace(/Z$/, ''), is_trainer: !!a.trainer, summary: { distance: a.distance, moving_time: a.moving_time, elevation_gain: a.total_elevation_gain, kilojoules: a.kilojoules == null ? null : a.kilojoules, total_calories: a.calories == null ? null : a.calories } })), has_next_page: list.length === 100, end_cursor: String(page + 1) };
       } else if (tool === 'get_activity_streams') {
-        const st = await sGet('/activities/' + encodeURIComponent(input.activity_id) + '/streams?keys=time,watts,heartrate,cadence&key_by_type=true');
-        p = st ? { time: st.time && st.time.data, watts: st.watts && st.watts.data, heart_rate: st.heartrate && st.heartrate.data, cadence: st.cadence && st.cadence.data } : null;
+        const st = await sGet('/activities/' + encodeURIComponent(input.activity_id) + '/streams?keys=time,watts,heartrate,cadence,distance&key_by_type=true');
+        p = st ? { time: st.time && st.time.data, watts: st.watts && st.watts.data, heart_rate: st.heartrate && st.heartrate.data, cadence: st.cadence && st.cadence.data, distance: st.distance && st.distance.data } : null;
       }
       return { payload: p };
     }
