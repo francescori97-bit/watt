@@ -1273,7 +1273,7 @@ details summary { cursor: pointer; }
   /* ---------- Aggregazioni ---------- */
   const CATS = [['all', 'Tutte'], ['virt', 'Zwift / virtuale'], ['indoor', 'Indoor'], ['outdoor', 'Bici outdoor'], ['other', 'Altri sport']];
   const CATNAME = { virt: 'Zwift / virtuale', indoor: 'Indoor', outdoor: 'Outdoor', other: 'Altro sport' };
-  const PERIODS = [[28, '4 settimane'], [84, '12 settimane'], [182, '6 mesi'], [365, '12 mesi']];
+  const PERIODS = [[7, '1 settimana'], [28, '4 settimane'], [84, '12 settimane'], [182, '6 mesi'], [365, '12 mesi']];
   const catOk = a => UI.cat === 'all' || W.classify(a).cat === UI.cat;
   function inPeriod(days, off) {
     const end = Date.now() - off * 864e5, st = end - days * 864e5;
