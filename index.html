@@ -1194,7 +1194,7 @@ details summary { cursor: pointer; }
   }
   function compact(a) {
     const s = a.summary || {};
-    return { id: String(a.id), name: a.name || '', sport: a.sport_type || '', start: a.start_local || '', trainer: !!a.is_trainer, dist: s.distance || 0, mov: s.moving_time || 0, elev: s.elevation_gain || 0, re: s.relative_effort == null ? null : s.relative_effort, kcal: s.total_calories == null ? null : s.total_calories };
+    return { id: String(a.id), name: a.name || '', sport: a.sport_type || '', start: a.start_local || '', trainer: !!a.is_trainer, dist: s.distance || 0, mov: s.moving_time || 0, elev: s.elevation_gain || 0, re: s.relative_effort == null ? null : s.relative_effort, kcal: s.total_calories == null ? null : s.total_calories, kj: s.kilojoules == null ? null : s.kilojoules };
   }
   const isoLocal = d => localDay(d) + 'T00:00:00';
   async function sync() {
@@ -1214,7 +1214,7 @@ details summary { cursor: pointer; }
       if (!P.hrz && strava.hrz) { P.hrz = strava.hrz.slice(); P.hrSrc = 'strava'; save(); }
 
       const wanted = new Date(Date.now() - P.months * 30.44 * 864e5);
-      const starts = Object.values(acts).map(a => a.start).sort();
+      const starts = SA && !syncInfo.kj ? [] : Object.values(acts).map(a => a.start).sort();
       let from = wanted;
       if (starts.length && Date.parse(starts[0]) <= wanted.getTime() + 14 * 864e5) from = new Date(Date.parse(starts[starts.length - 1]) - 14 * 864e5);
       let cursor = null, pages = 0, added = 0, seen = 0;
@@ -1229,7 +1229,7 @@ details summary { cursor: pointer; }
         pages++;
       } while (cursor && pages < 20);
       LS.set('watt.acts', acts);
-      syncInfo = { at: Date.now(), added: added, total: Object.keys(acts).length, truncated: !!cursor };
+      syncInfo = { at: Date.now(), added: added, total: Object.keys(acts).length, truncated: !!cursor, kj: true };
       LS.set('watt.sync', syncInfo);
       setSync('ok', '');
       if (!live) render();
@@ -1282,8 +1282,10 @@ details summary { cursor: pointer; }
   const ftpFor = a => W.ftpAt(P.ftpHist, a.start.slice(0, 10), P.ftp);
   function agg(list) {
     const o = { n: list.length, sec: 0, km: 0, pN: 0, pSec: 0, pSum: 0, maxP: null, hN: 0, hSec: 0, hSum: 0, maxHr: null, tss: 0, tssN: 0, approx: false, pz: [0, 0, 0, 0, 0, 0, 0], hz: [0, 0, 0, 0, 0], curve: {} };
+    o.kcal = 0; o.kcalN = 0; o.kcalEst = 0;
     for (const a of list) {
       o.sec += a.mov; o.km += a.dist / 1000;
+      const kc = kcalOf(a); if (kc) { o.kcal += kc.v; o.kcalN++; if (kc.est) o.kcalEst++; }
       const an = ans[a.id];
       if (!an) continue;
       if (an.hasPower) {
@@ -1510,6 +1512,14 @@ details summary { cursor: pointer; }
     return h;
   }
 
+  /* calorie: quelle di Strava; in mancanza, per la bici, il lavoro in kJ (circa uguale alle kcal spese, con un rendimento del 20–25%) */
+  function kcalOf(a) {
+    if (a.kcal != null && a.kcal > 0) return { v: a.kcal, est: false };
+    if (a.kj != null && a.kj > 0) return { v: a.kj, est: true };
+    return null;
+  }
+  const kcalTxt = k => (k ? (k.est ? '≈ ' : '') + nf(k.v) : '—');
+
   /* ---------- Vista: Dashboard ---------- */
   function estFtp() {
     const lim = Date.now() - 90 * 864e5; let best = null;
@@ -1524,7 +1534,7 @@ details summary { cursor: pointer; }
   function tile(lab, val, unit, sub) { return '<div class="tile"><div class="lab">' + lab + '</div><div class="val">' + val + (unit ? '<small>' + unit + '</small>' : '') + '</div><div class="sub">' + (sub || '&nbsp;') + '</div></div>'; }
   function actRow(a) {
     const c = W.classify(a), an = ans[a.id], f = ftpFor(a), l = an && f ? W.load(an, f.ftp) : null;
-    return '<tr class="click" data-act="detail" data-v="' + esc(a.id) + '"><td>' + dmy(a.start) + '</td><td class="name">' + esc(a.name) + (c.cat !== 'other' ? '<span class="badge ' + c.cat + '">' + CATNAME[c.cat] + (c.sure ? '' : ' ?') + '</span>' : '<span class="badge">' + esc(a.sport) + '</span>') + '</td><td class="r">' + dur(a.mov) + '</td><td class="r">' + (an && an.hasPower ? nf(an.avgP) + ' W' : '—') + '</td><td class="r">' + (an && an.np != null ? nf(an.np) + ' W' : '—') + '</td><td class="r">' + (l ? nf(l.IF, 2) : '—') + '</td><td class="r">' + (l ? nf(l.tss) : '—') + '</td><td class="r">' + (an && an.hasHr ? nf(an.avgHr) : '—') + '</td></tr>';
+    return '<tr class="click" data-act="detail" data-v="' + esc(a.id) + '"><td>' + dmy(a.start) + '</td><td class="name">' + esc(a.name) + (c.cat !== 'other' ? '<span class="badge ' + c.cat + '">' + CATNAME[c.cat] + (c.sure ? '' : ' ?') + '</span>' : '<span class="badge">' + esc(a.sport) + '</span>') + '</td><td class="r">' + dur(a.mov) + '</td><td class="r">' + (an && an.hasPower ? nf(an.avgP) + ' W' : '—') + '</td><td class="r">' + (an && an.np != null ? nf(an.np) + ' W' : '—') + '</td><td class="r">' + (l ? nf(l.IF, 2) : '—') + '</td><td class="r">' + (l ? nf(l.tss) : '—') + '</td><td class="r">' + (an && an.hasHr ? nf(an.avgHr) : '—') + '</td><td class="r">' + kcalTxt(kcalOf(a)) + '</td></tr>';
   }
   function vDashboard() {
     const days = UI.period, list = inPeriod(days, 0), cur = agg(list);
@@ -1549,6 +1559,7 @@ details summary { cursor: pointer; }
       tile('Potenza massima', cur.maxP != null ? nf(cur.maxP) : '—', cur.maxP != null ? 'W' : '', 'picco di 1 s') +
       tile('FC media', cur.hN ? nf(cur.hSum / cur.hSec) : '—', cur.hN ? 'bpm' : '', cur.hN ? cur.hN + ' sessioni con FC analizzate' : 'solo uscite in bici analizzate') +
       tile('FC massima', cur.maxHr != null ? nf(cur.maxHr) : '—', cur.maxHr != null ? 'bpm' : '', '&nbsp;') +
+      tile('Calorie', cur.kcalN ? nf(cur.kcal) : '—', cur.kcalN ? 'kcal' : '', cur.kcalN ? (prev && prev.kcalN ? delta(cur.kcal, prev.kcal, 0, ' kcal') : cur.kcalN + ' attività con calorie') + (cur.kcalEst ? ' · ' + cur.kcalEst + ' stimate dai kJ' : '') + (cur.n > cur.kcalN ? ' · ' + (cur.n - cur.kcalN) + ' senza dato' : '') : 'Strava non le riporta per queste attività') +
       tile('TSS', cur.tssN ? nf(cur.tss) : '—', '', cur.tssN ? cur.tssN + ' sessioni con almeno 20 min di potenza' + (cur.approx ? ' · FTP attuale applicata a date senza FTP registrata' : '') : 'servono serie di potenza e una FTP') +
       '</div>';
     h += vLoad();
@@ -1560,7 +1571,7 @@ details summary { cursor: pointer; }
       ((P.ftpHist || []).length >= 2 ? chart(w => svgFtp(P.ftpHist, w)) : '<p class="small mut">Storico FTP registrato: ' + ((P.ftpHist || []).length ? P.ftpHist.map(x => x.ftp + ' W dal ' + dmy(x.date) + ' (' + srcName(x.src) + ')').join(', ') + '. Il grafico compare dalla seconda voce.' : 'nessuna voce.') + '</p>') + '</div></div>';
     h += '<div class="grid2"><div class="card"><h3>Tempo nelle zone di potenza</h3>' + zoneRows(cur.pz, W.PZ.map(z => z.name), [1, 2, 3, 4, 5, 6, 7]) + '<p class="small mut">Zone in percentuale della FTP in vigore alla data dell’attività' + (cur.approx ? '; dove non c’era una FTP registrata è stata usata quella attuale' : '') + '.</p></div><div class="card"><h3>Tempo nelle zone cardiache</h3>' + (P.hrz ? zoneRows(cur.hz, HZN, HZC) : '<p class="empty">Imposta le zone cardiache in Impostazioni.</p>') + '</div></div>';
     const rows = list.slice().sort((a, b) => (a.start < b.start ? 1 : -1)).slice(0, 40);
-    h += '<div class="card"><h3>Attività (' + list.length + ')</h3><div class="tw"><table><thead><tr><th>Data</th><th>Attività</th><th class="r">Durata</th><th class="r">Pot. media</th><th class="r">NP</th><th class="r">IF</th><th class="r">TSS</th><th class="r">FC media</th></tr></thead><tbody>' + rows.map(actRow).join('') + '</tbody></table></div>' + (list.length > 40 ? '<p class="small mut">Mostrate le 40 più recenti.</p>' : '') + '<p class="small mut">NP, IF e TSS compaiono solo con almeno 20 minuti di potenza misurata. NP: media mobile a 30 s elevata alla quarta, media, radice quarta. IF = NP / FTP. TSS = secondi × NP × IF / (FTP × 3600) × 100.</p></div>';
+    h += '<div class="card"><h3>Attività (' + list.length + ')</h3><div class="tw"><table><thead><tr><th>Data</th><th>Attività</th><th class="r">Durata</th><th class="r">Pot. media</th><th class="r">NP</th><th class="r">IF</th><th class="r">TSS</th><th class="r">FC media</th><th class="r">kcal</th></tr></thead><tbody>' + rows.map(actRow).join('') + '</tbody></table></div>' + (list.length > 40 ? '<p class="small mut">Mostrate le 40 più recenti.</p>' : '') + '<p class="small mut">NP, IF e TSS compaiono solo con almeno 20 minuti di potenza misurata. NP: media mobile a 30 s elevata alla quarta, media, radice quarta. IF = NP / FTP. TSS = secondi × NP × IF / (FTP × 3600) × 100.</p></div>';
     return h;
   }
   async function openDetail(id) {
@@ -1569,7 +1580,7 @@ details summary { cursor: pointer; }
     const body = () => {
       const an = ans[id], f = ftpFor(a), l = an && f ? W.load(an, f.ftp) : null;
       let h = '<div class="row spread"><h2>' + esc(a.name) + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="small mut">' + dmy(a.start) + ' · ' + esc(a.sport) + ' · ' + (c.cat !== 'other' ? CATNAME[c.cat] : 'altro sport') + ' · importata da Strava</p>' + (c.note ? '<p class="note warn">' + c.note + '</p>' : '');
-      h += '<div class="kv"><div><span>Durata</span><b>' + dur(a.mov) + '</b></div><div><span>Distanza</span><b>' + (a.dist ? nf(a.dist / 1000, 1) + ' km' : '—') + '</b></div><div><span>Dislivello</span><b>' + (a.elev ? nf(a.elev) + ' m' : '—') + '</b></div>';
+      h += '<div class="kv"><div><span>Durata</span><b>' + dur(a.mov) + '</b></div><div><span>Calorie</span><b>' + (kcalOf(a) ? kcalTxt(kcalOf(a)) + ' kcal' : '—') + '</b></div><div><span>Distanza</span><b>' + (a.dist ? nf(a.dist / 1000, 1) + ' km' : '—') + '</b></div><div><span>Dislivello</span><b>' + (a.elev ? nf(a.elev) + ' m' : '—') + '</b></div>';
       if (!an) return h + '</div><p class="status"><span class="dot run"></span>Leggo le serie temporali da Strava…</p>';
       h += '<div><span>Pot. media</span><b>' + (an.hasPower ? nf(an.avgP) + ' W' : '—') + '</b></div><div><span>W/kg medi</span><b>' + (an.hasPower ? wkgTxt(an.avgP, a.start.slice(0, 10)) : '—') + '</b></div><div><span>W/kg NP</span><b>' + (an.np != null ? wkgTxt(an.np, a.start.slice(0, 10)) : '—') + '</b></div><div><span>Pot. massima</span><b>' + (an.hasPower ? nf(an.maxP) + ' W' : '—') + '</b></div><div><span>NP</span><b>' + (an.np != null ? nf(an.np) + ' W' : '—') + '</b></div><div><span>IF</span><b>' + (l ? nf(l.IF, 2) : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (an.hasHr ? nf(an.avgHr) : '—') + '</b></div><div><span>FC massima</span><b>' + (an.hasHr ? nf(an.maxHr) : '—') + '</b></div><div><span>Cadenza</span><b>' + (an.avgCad ? nf(an.avgCad) : '—') + '</b></div></div>';
       if (!an.hasPower) h += '<p class="note">Nessuna potenza misurata in questa attività: potenza, NP, IF e TSS restano vuoti, non vengono stimati.</p>';
@@ -1582,6 +1593,9 @@ details summary { cursor: pointer; }
       return h;
     };
     openModal(body());
+    if (SA && mcp === stravaDirect && (a.kcal == null || a.kcal <= 0)) {
+      sGet('/activities/' + encodeURIComponent(id)).then(d => { if (d && d.calories > 0) { a.kcal = d.calories; LS.set('watt.acts', acts); if ($('#modal .box')) openModal(body()); } }).catch(() => {});
+    }
     if (!ans[id]) {
       try { await analyzeOne(id); LS.set('watt.an', ans); }
       catch (e) { if ($('#modal .box')) $('#modal .box').insertAdjacentHTML('beforeend', '<p class="note bad">' + esc(errMsg(e)) + '</p>'); return; }
@@ -1909,7 +1923,7 @@ details summary { cursor: pointer; }
   function doneBody(rec) {
       const completed = rec.completed;
       const l = rec.np != null ? W.load({ np: rec.np, pSec: rec.pSec }, rec.ftp) : null;
-      return ('<div class="row spread"><h2>' + (completed ? 'Allenamento concluso' : 'Sessione terminata') + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="mut">' + esc(rec.name) + ' · ' + (rec.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + ' · FTP ' + rec.ftp + ' W' + (rec.kg ? ' (' + nf(rec.ftp / rec.kg, 2) + ' W/kg a ' + nf(rec.kg, 1) + ' kg)' : '') + '</p><div class="kv"><div><span>Svolto</span><b>' + W.fmtTime(rec.elapsed) + '</b></div><div><span>Completato</span><b>' + nf(rec.pct) + '%</b></div><div><span>Pot. media</span><b>' + (rec.avgP != null ? rec.avgP + ' W' : 'n/d') + '</b></div><div><span>W/kg medi</span><b>' + (rec.avgP != null && rec.kg ? nf(rec.avgP / rec.kg, 2) : 'n/d') + '</b></div><div><span>NP</span><b>' + (rec.np != null ? rec.np + ' W' : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (rec.avgHr != null ? rec.avgHr : 'n/d') + '</b></div></div><p class="small mut">' + (rec.avgP == null ? 'Nessun sensore di potenza collegato: la potenza effettiva non è stata registrata e il target non la sostituisce. ' : 'Potenza registrata per ' + W.fmtTime(rec.pSec) + '. ') + 'La sessione è salvata in WATT.</p>' + sessActions(rec));
+      return ('<div class="row spread"><h2>' + (completed ? 'Allenamento concluso' : 'Sessione terminata') + '</h2><button class="btn sm" data-act="close">Chiudi</button></div><p class="mut">' + esc(rec.name) + ' · ' + (rec.mode === 'rivo' ? 'Elite Rivo' : 'Cyclette') + ' · FTP ' + rec.ftp + ' W' + (rec.kg ? ' (' + nf(rec.ftp / rec.kg, 2) + ' W/kg a ' + nf(rec.kg, 1) + ' kg)' : '') + '</p><div class="kv"><div><span>Svolto</span><b>' + W.fmtTime(rec.elapsed) + '</b></div><div><span>Completato</span><b>' + nf(rec.pct) + '%</b></div><div><span>Pot. media</span><b>' + (rec.avgP != null ? rec.avgP + ' W' : 'n/d') + '</b></div><div><span>W/kg medi</span><b>' + (rec.avgP != null && rec.kg ? nf(rec.avgP / rec.kg, 2) : 'n/d') + '</b></div><div><span>Calorie</span><b>' + (rec.avgP != null ? '≈ ' + nf(rec.avgP * rec.pSec / 1000) : 'n/d') + '</b></div><div><span>NP</span><b>' + (rec.np != null ? rec.np + ' W' : '—') + '</b></div><div><span>TSS</span><b>' + (l ? nf(l.tss) : '—') + '</b></div><div><span>FC media</span><b>' + (rec.avgHr != null ? rec.avgHr : 'n/d') + '</b></div></div><p class="small mut">' + (rec.avgP == null ? 'Nessun sensore di potenza collegato: la potenza effettiva non è stata registrata e il target non la sostituisce. ' : 'Potenza registrata per ' + W.fmtTime(rec.pSec) + '. ') + 'La sessione è salvata in WATT.</p>' + sessActions(rec));
   }
 
   /* ---------- Portare una sessione su Strava ---------- */
@@ -2088,7 +2102,7 @@ details summary { cursor: pointer; }
       } else if (tool === 'list_activities') {
         const page = +(input.after || 1), after = Math.floor(Date.parse(input.range_start) / 1000);
         const list = (await sGet('/athlete/activities?per_page=100&page=' + page + '&after=' + after)) || [];
-        p = { activities: list.map(a => ({ id: String(a.id), name: a.name, sport_type: a.sport_type || a.type, start_local: String(a.start_date_local || '').replace(/Z$/, ''), is_trainer: !!a.trainer, summary: { distance: a.distance, moving_time: a.moving_time, elevation_gain: a.total_elevation_gain } })), has_next_page: list.length === 100, end_cursor: String(page + 1) };
+        p = { activities: list.map(a => ({ id: String(a.id), name: a.name, sport_type: a.sport_type || a.type, start_local: String(a.start_date_local || '').replace(/Z$/, ''), is_trainer: !!a.trainer, summary: { distance: a.distance, moving_time: a.moving_time, elevation_gain: a.total_elevation_gain, kilojoules: a.kilojoules == null ? null : a.kilojoules, total_calories: a.calories == null ? null : a.calories } })), has_next_page: list.length === 100, end_cursor: String(page + 1) };
       } else if (tool === 'get_activity_streams') {
         const st = await sGet('/activities/' + encodeURIComponent(input.activity_id) + '/streams?keys=time,watts,heartrate,cadence&key_by_type=true');
         p = st ? { time: st.time && st.time.data, watts: st.watts && st.watts.data, heart_rate: st.heartrate && st.heartrate.data, cadence: st.cadence && st.cadence.data } : null;
