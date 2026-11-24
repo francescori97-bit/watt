@@ -156,11 +156,15 @@ tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
 .kv div b { font-family: var(--display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .tip { position: fixed; z-index: 50; pointer-events: none; background: #0f1114; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; max-width: 260px; box-shadow: 0 6px 20px rgba(0, 0, 0, .5); }
 
-/* ---------- Consolle a tutto schermo: grafico, target, timer, FC + zona, tempo trascorso ---------- */
+/* ---------- Consolle a tutto schermo: timer + trascorso, grafico, target + zona, FC + zona, grafico FC ---------- */
 .cs { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; gap: 8px; padding: 8px 10px 10px; height: 100%; overflow: hidden;
   grid-template-columns: 1fr;
-  grid-template-rows: minmax(0, 1.25fr) clamp(76px, 14vh, 160px) minmax(0, 1fr) minmax(0, 1fr) auto auto auto auto;
-  grid-template-areas: 'it' 'ch' 'p1' 'p2' 'el' 'top' 'ctl' 'msg'; }
+  grid-template-rows: minmax(0, 1.2fr) clamp(76px, 14vh, 160px) minmax(0, 1fr) minmax(0, 1fr) clamp(56px, 11vh, 130px) auto auto auto;
+  grid-template-areas: 'it' 'ch' 'p1' 'p2' 'hc' 'top' 'ctl' 'msg'; }
+.cs-row1 { grid-area: it; display: grid; grid-template-columns: 1.55fr 1fr; gap: 8px; min-height: 0; }
+.cs-hrc { grid-area: hc; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-height: 0; }
+.cs-hrc svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cs-hrlab { position: absolute; left: 8px; top: 4px; font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .06em; pointer-events: none; }
 .cs-top { grid-area: top; display: flex; padding: 0 2px; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--mut); min-height: 24px; }
 .cs-top b { color: var(--fg); font-family: var(--display); font-size: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cs-conn { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
@@ -174,15 +178,16 @@ tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
 .cs-cell b small { font-size: .38em; color: var(--mut); font-weight: 500; margin-left: 6px; }
 .cs-cell .s { font-size: 14px; color: var(--mut); min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .cs-tg b { font-size: clamp(44px, 9.5vh, 110px); color: var(--acc); }
-.cs-it { grid-area: it; border-top: 4px solid var(--z1); } .cs-it b { font-size: clamp(60px, 12.5vh, 160px); }
+.cs-it { border-top: 4px solid var(--z1); } .cs-it b { font-size: clamp(44px, min(12.5vh, 15vw), 150px); }
 .cs-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 0; }
 .cs-p1 { grid-area: p1; } .cs-p2 { grid-area: p2; }
 .cs-hr b { font-size: clamp(40px, 9vh, 96px); color: #ff5d73; }
 .cs-hr b.na { color: var(--mut); font-size: clamp(30px, 6vh, 64px); }
 .cs-zn b { font-size: clamp(38px, 8.5vh, 92px); color: #111; border-radius: 10px; padding: 2px 18px; }
 .cs-zn b.na { color: var(--mut); background: transparent; font-size: clamp(30px, 6vh, 64px); }
-.cs-el { grid-area: el; padding: 6px 12px; }
-.cs-el b { font-size: clamp(30px, 5vh, 56px); }
+.cs-el { padding: 4px 10px; border-top: 4px solid transparent; }
+.cs-el b { font-size: clamp(26px, min(7vh, 8.5vw), 72px); }
+.cs-el .s { white-space: normal; line-height: 1.2; }
 .cs-el .bar { width: 100%; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin: 4px 0 2px; }
 .cs-el .bar i { display: block; height: 100%; width: 0; background: var(--acc); }
 .cs-ctl { grid-area: ctl; display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; }
@@ -194,35 +199,32 @@ tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
 .cs-confirm .btn { min-height: 52px; }
 .cs.paused .cs-it b { color: var(--warn); }
 @media (orientation: portrait) and (max-height: 720px) {
-  .cs { gap: 6px; padding: 6px 8px 8px; grid-template-rows: minmax(0, 1.2fr) clamp(54px, 11vh, 96px) minmax(0, 1fr) minmax(0, 1fr) auto auto auto auto; }
+  .cs { gap: 6px; padding: 6px 8px 8px; grid-template-rows: minmax(0, 1.15fr) clamp(50px, 10vh, 90px) minmax(0, 1fr) minmax(0, 1fr) clamp(46px, 9vh, 80px) auto auto auto; }
+  .cs-row1 { gap: 6px; }
   .cs-cell { padding: 2px 8px; }
   .cs-cell label { font-size: 10px; }
   .cs-cell .s { font-size: 12px; min-height: 15px; }
-  .cs-it b { font-size: clamp(46px, 10.5vh, 90px); }
+  .cs-it b { font-size: clamp(40px, min(10.5vh, 14vw), 90px); }
   .cs-tg b, .cs-hr b { font-size: clamp(28px, 6.5vh, 58px); }
   .cs-zn b { font-size: clamp(26px, 6vh, 54px); padding: 0 12px; }
   .cs-zn b.na, .cs-hr b.na { font-size: clamp(22px, 5vh, 40px); }
-  .cs-el { flex-direction: row; gap: 10px; padding: 4px 10px; }
-  .cs-el label { display: none; }
-  .cs-el b { font-size: 26px; }
-  .cs-el .bar { flex: 1; margin: 0; }
+  .cs-el b { font-size: clamp(22px, min(6vh, 8vw), 44px); }
+  .cs-el .bar { height: 6px; margin: 3px 0 1px; }
   .cs-top { min-height: 18px; } .cs-top b { font-size: 15px; }
   .cs-ctl .btn { min-height: 48px; font-size: 16px; }
 }
 @media (orientation: landscape) and (max-height: 560px) {
   .cs { grid-template-columns: 1fr 1fr 150px;
-    grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr) auto auto;
-    grid-template-areas: 'it ch ctl' 'p1 p2 ctl' 'el el ctl' 'top top msg'; }
+    grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr) minmax(40px, .55fr) auto;
+    grid-template-areas: 'it ch ctl' 'p1 p2 ctl' 'hc hc ctl' 'top top msg'; }
   .cs-ctl { grid-template-columns: 1fr; grid-template-rows: 2fr 1fr auto; }
   .cs-cell { padding: 2px 6px; }
   .cs-cell .s { font-size: 11px; min-height: 14px; }
   .cs-tg b { font-size: clamp(28px, 13vh, 72px); }
-  .cs-it b { font-size: clamp(48px, 24vh, 130px); }
+  .cs-it b { font-size: clamp(40px, min(22vh, 9vw), 120px); }
   .cs-hr b, .cs-zn b { font-size: clamp(22px, 9vh, 48px); }
   .cs-hr b.na { font-size: clamp(18px, 7vh, 36px); }
-  .cs-el { flex-direction: row; gap: 12px; padding: 4px 10px; }
-  .cs-el b { font-size: clamp(22px, 8vh, 40px); }
-  .cs-el .bar { flex: 1; margin: 0; }
+  .cs-el b { font-size: clamp(20px, min(12vh, 5vw), 56px); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .cs-el .bar i, .cs-cur, .cs-done { transition: all .25s linear; }
@@ -2012,13 +2014,14 @@ details summary { cursor: pointer; }
   function buildConsole() {
     const L = live, el = $('#console');
     el.innerHTML =
-      '<div class="cs-cell cs-it" id="cs-itc"><label id="cs-il">Intervallo</label><b class="num" id="cs-it">0:00</b><div class="s" id="cs-in"></div></div>' +
+      '<div class="cs-row1"><div class="cs-cell cs-it" id="cs-itc"><label id="cs-il">Intervallo</label><b class="num" id="cs-it">0:00</b><div class="s" id="cs-in"></div></div>' +
+      '<div class="cs-cell cs-el"><label>Trascorso</label><b class="num" id="cs-el">0:00</b><div class="bar"><i id="cs-bar"></i></div><div class="s"><span id="cs-pc">0%</span> · <span id="cs-rm"></span></div></div></div>' +
       '<div class="cs-chart">' + wkSvg(L.wk.blocks).replace('class="wsvg"', '') + '<div class="cs-done" id="cs-done"></div><div class="cs-cur" id="cs-cur"></div></div>' +
       '<div class="cs-pair cs-p1"><div class="cs-cell cs-tg"><label>Target</label><b class="num"><span id="cs-tw">—</span><small>W</small></b><div class="s" id="cs-tp"></div></div>' +
       '<div class="cs-cell cs-zn"><label>Zona di potenza</label><b class="num" id="cs-zt">—</b><div class="s" id="cs-zn"></div></div></div>' +
       '<div class="cs-pair cs-p2"><div class="cs-cell cs-hr"><label>Frequenza cardiaca</label><b class="num" id="cs-hr">n/d</b><div class="s" id="cs-hz"></div></div>' +
       '<div class="cs-cell cs-zn"><label>Zona cardiaca</label><b class="num na" id="cs-hzb">n/d</b><div class="s" id="cs-hzn"></div></div></div>' +
-      '<div class="cs-cell cs-el"><label>Tempo trascorso</label><b class="num" id="cs-el">0:00</b><div class="bar"><i id="cs-bar"></i></div><div class="s"><span id="cs-pc">0%</span> · <span id="cs-rm"></span></div></div>' +
+      '<div class="cs-hrc" id="cs-hrc"><svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-label="Frequenza cardiaca durante la sessione"><g id="cs-hrb"></g><path id="cs-hrl" d="" fill="none" stroke="#ff5d73" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg><span class="cs-hrlab" id="cs-hrlab">FC · nessun dato</span></div>' +
       '<div class="cs-top"><b>' + esc(L.wk.name) + '</b><div class="cs-conn" id="cs-conn"></div></div>' +
       '<div class="cs-ctl"><button class="btn pri" id="cs-pause" data-act="pause">Pausa</button><button class="btn danger" data-act="askEnd">Termina</button><button class="btn" data-act="fs" aria-label="Schermo intero">⛶</button></div>' +
       '<div class="cs-msg" id="cs-msg"></div>' +
@@ -2027,6 +2030,31 @@ details summary { cursor: pointer; }
   }
   const setT = (id, t) => { const e = document.getElementById(id); if (e && e.textContent !== t) e.textContent = t; };
   function zBox(id, z) { const e = document.getElementById(id); if (!e) return; const c = 'num' + (z ? ' z' + z : ' na'); if (e.className !== c) e.className = c; setT(id, z ? 'Z' + z : 'n/d'); }
+  /* Grafico FC della sessione: asse x = durata del workout (allineato al grafico sopra), solo campioni misurati.
+     Fasce colorate = zone FC se impostate; buchi oltre 5 s senza dato interrompono la linea. */
+  function drawHr(L, T0) {
+    const path = document.getElementById('cs-hrl'), lab = document.getElementById('cs-hrlab'), bands = document.getElementById('cs-hrb');
+    if (!path) return;
+    const pts = [];
+    for (let i = 0; i < L.t.length; i++) if (L.h[i] != null) pts.push([L.t[i], L.h[i]]);
+    if (!pts.length) { if (path.getAttribute('d')) path.setAttribute('d', ''); setT('cs-hrlab', 'FC · nessun dato'); return; }
+    let lo = Infinity, hi = -Infinity;
+    for (const p of pts) { if (p[1] < lo) lo = p[1]; if (p[1] > hi) hi = p[1]; }
+    lo = Math.floor((Math.min(lo, 100) - 5) / 10) * 10; hi = Math.ceil((Math.max(hi, 160) + 5) / 10) * 10;
+    const X = t => (t / T0) * 1000, Y = h => 98 - ((h - lo) / (hi - lo)) * 78;
+    const key = lo + '-' + hi;
+    if (bands && bands.dataset.k !== key) {
+      bands.dataset.k = key;
+      const z = P.hrz;
+      bands.innerHTML = z ? [lo].concat(z).map((b, i) => { const top = i < 4 ? Math.min(z[i], hi) : hi; return top > b ? '<rect x="0" width="1000" y="' + Y(top).toFixed(2) + '" height="' + (Y(Math.max(b, lo)) - Y(top)).toFixed(2) + '" fill="var(--z' + HZC[i] + ')" opacity=".13"/>' : ''; }).join('') : '';
+    }
+    const step = Math.max(1, Math.ceil(pts.length / 700));
+    let d = '', prevT = null;
+    for (let i = 0; i < pts.length; i += step) { const p = pts[i]; d += (prevT == null || p[0] - prevT > 5 * step ? 'M' : 'L') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); prevT = p[0]; }
+    path.setAttribute('d', d);
+    let sum = 0, mx = 0; for (const p of pts) { sum += p[1]; if (p[1] > mx) mx = p[1]; }
+    setT('cs-hrlab', 'FC · media ' + Math.round(sum / pts.length) + ' · max ' + mx + ' bpm');
+  }
   function tick() {
     const L = live; if (!L) return;
     const sec = L.timer.elapsedMs() / 1000, loc = W.locate(L.wk.blocks, sec), T0 = loc.total;
@@ -2043,6 +2071,7 @@ details summary { cursor: pointer; }
     if (L.timer.running() && whole > L.lastSec) {
       L.lastSec = whole;
       if (pw != null || hr != null) { L.t.push(whole); L.ts.push(Date.now()); L.w.push(pw); L.h.push(hr); L.c.push(cad); }
+      drawHr(L, T0);
     }
     setT('cs-tw', String(tw)); setT('cs-tp', (b.c ? b.c + ' rpm · ' : '') + pct(b.p) + ' FTP' + (L.kg ? ' · ' + nf(tw / L.kg, 2) + ' W/kg' : ' · FTP ' + L.ftp + ' W'));
     const pe = document.getElementById('cs-pw');
